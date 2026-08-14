@@ -23,7 +23,7 @@ function bindForms() {
     e.target.reset(); renderAll(); toast('Player added');
   });
   document.getElementById('csv-file').addEventListener('change', async e => {const file=e.target.files?.[0];if(!file)return;try{const result=importCSV(await file.text());document.getElementById('import-result').textContent=`${result.added} added · ${result.updated} updated`;renderAll();toast(`Imported ${result.added+result.updated} players`)}catch(err){document.getElementById('import-result').textContent=err.message;toast(err.message,'error')}e.target.value=''});
-  document.getElementById('quick-draft-form').addEventListener('submit', e => {e.preventDefault();const p=addPlayer({name:document.getElementById('quick-draft-name').value,position:document.getElementById('quick-draft-pos').value});e.target.reset();draftPlayer(p.id)});
+  document.getElementById('quick-draft-form').addEventListener('submit', e => {e.preventDefault();const p=addPlayer({name:document.getElementById('quick-draft-name').value,position:document.getElementById('quick-draft-pos').value});e.target.reset();if(typeof recordDraftPickWithFeedback==='function')recordDraftPickWithFeedback(p.id);else draftPlayer(p.id)});
 }
 
 async function resetDraftData() {
@@ -55,7 +55,7 @@ function bindControls() {
   document.getElementById('export-backup')?.addEventListener('click',()=>download(`fantasy-manager-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(state,null,2),'application/json'));
   document.getElementById('backup-file')?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const parsed=JSON.parse(await file.text());if(!parsed.settings||!Array.isArray(parsed.players)||!Array.isArray(parsed.picks))throw new Error('Not a valid Fantasy Manager backup');state=typeof mergeCloudState==='function'?mergeCloudState(parsed):parsed;lineupResult=null;populateSettings();renderAll();saveState();if(typeof persistFirestoreState==='function')await persistFirestoreState({restoredBackupAt:new Date().toISOString()});toast('Backup restored to Firestore')}catch(err){toast(err.message,'error')}e.target.value=''});
   document.getElementById('reset-draft-data')?.addEventListener('click',resetDraftData);
-  document.body.addEventListener('click',e=>{const go=e.target.closest('[data-go]');if(go&&go.dataset.go){switchTab(go.dataset.go);return}const btn=e.target.closest('[data-action]');if(!btn)return;const{action,id}=btn.dataset;if(action==='draft')draftPlayer(id);if(action==='add-roster')addToRoster(id);if(action==='remove-roster')removeFromRoster(id)});
+  document.body.addEventListener('click',e=>{const go=e.target.closest('[data-go]');if(go&&go.dataset.go){switchTab(go.dataset.go);return}const btn=e.target.closest('[data-action]');if(!btn)return;const{action,id}=btn.dataset;if(action==='draft'){if(typeof recordDraftPickWithFeedback==='function')recordDraftPickWithFeedback(id,btn);else draftPlayer(id)}if(action==='add-roster')addToRoster(id);if(action==='remove-roster')removeFromRoster(id)});
   document.body.addEventListener('change',e=>{const input=e.target.closest('[data-projection-id]');if(!input)return;const p=getPlayer(input.dataset.projectionId);if(!p)return;p.projection=num(input.value);saveState();lineupResult=null;renderDashboard();renderDraft();toast('Projection updated')});
 }
 
