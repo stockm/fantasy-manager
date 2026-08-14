@@ -60,7 +60,8 @@ function optimizeLineup() {
 }
 
 function renderRoster() {
-  document.getElementById('roster-title').textContent = state.settings.teamName;
+  const myTeamName = typeof leagueTeamName === 'function' ? leagueTeamName(Number(state.settings.draftSlot)) : (state.settings.teamName || 'My Team');
+  document.getElementById('roster-title').textContent = myTeamName;
   const roster = myRoster();
   document.getElementById('roster-body').innerHTML = roster.map(p => {
     const pick = myDraftPicks().find(x => x.playerId === p.id);
