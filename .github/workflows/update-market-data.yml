@@ -10,6 +10,9 @@ on:
       - feature/market-adp-projections-yahoo-preset
     paths:
       - scripts/update_market_data.py
+      - app-market.js
+      - app-market-labels.js
+      - app-ui.js
       - .github/workflows/update-market-data.yml
 
 permissions:
@@ -30,7 +33,20 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install scraper dependencies
+      - name: Validate browser JavaScript
+        run: |
+          node --check app-core.js
+          node --check app-feed.js
+          node --check app-market.js
+          node --check app-market-labels.js
+          node --check app-ui-a.js
+          node --check app-ui-b.js
+          node --check app-ui-c.js
+
+      - name: Validate Python
+        run: python -m py_compile scripts/update_market_data.py
+
+      - name: Install data dependencies
         run: python -m pip install --disable-pip-version-check requests beautifulsoup4
 
       - name: Build market data
