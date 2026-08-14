@@ -45,6 +45,29 @@ function bindForms() {
   });
 }
 
+async function resetDraftData() {
+  if (!confirm('Delete all draft picks and drafted rosters and restart the draft from Pick 1?\n\nLeague settings, team names, player rankings and weekly configuration will be kept.')) return;
+  state.picks = [];
+  state.manualRosterIds = [];
+  lineupResult = null;
+  if (state.matchups && typeof state.matchups === 'object') state.matchups = {};
+  if (state.weeklyMatchups && typeof state.weeklyMatchups === 'object') state.weeklyMatchups = {};
+  if (Array.isArray(state.leagueTeams)) state.leagueTeams.forEach(team => {
+    if (Array.isArray(team.rosterIds)) team.rosterIds = [];
+    if (Array.isArray(team.players)) team.players = [];
+    if (Array.isArray(team.roster)) team.roster = [];
+  });
+  saveState();
+  renderAll();
+  if (typeof renderLeagueTeams === 'function') renderLeagueTeams();
+  try {
+    if (typeof persistFirestoreState === 'function') await persistFirestoreState({ draftResetAt: new Date().toISOString() });
+    toast('Draft reset. League setup kept and Firestore updated.');
+  } catch (err) {
+    toast('Draft reset locally in memory, but Firestore sync failed. Use Save cloud before continuing.', 'error');
+  }
+}
+
 function bindControls() {
   ['player-search', 'player-pos-filter', 'player-status-filter'].forEach(id => document.getElementById(id).addEventListener(id.includes('search') ? 'input' : 'change', renderPlayers));
   ['draft-search', 'draft-pos-filter'].forEach(id => document.getElementById(id).addEventListener(id.includes('search') ? 'input' : 'change', renderDraft));
@@ -54,21 +77,19 @@ function bindControls() {
   document.getElementById('refresh-live-data').addEventListener('click', refreshLiveData);
   document.getElementById('refresh-rankings-only').addEventListener('click', () => refreshRankings());
   document.getElementById('download-template').addEventListener('click', () => download('fantasy-player-template.csv', 'name,team,position,rank,adp,projection,bye,tier,status\n', 'text/csv'));
-  document.getElementById('export-backup').addEventListener('click', () => download(`fantasy-manager-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(state, null, 2), 'application/json'));
-  document.getElementById('backup-file').addEventListener('change', async e => {
+  document.getElementById('export-backup')?.addEventListener('click', () => download(`fantasy-manager-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(state, null, 2), 'application/json'));
+  document.getElementById('backup-file')?.addEventListener('change', async e => {
     const file = e.target.files?.[0]; if (!file) return;
     try {
       const parsed = JSON.parse(await file.text());
       if (!parsed.settings || !Array.isArray(parsed.players) || !Array.isArray(parsed.picks)) throw new Error('Not a valid Fantasy Manager backup');
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); state = loadState(); lineupResult = null; populateSettings(); renderAll(); toast('Backup restored');
+      state = mergeCloudState ? mergeCloudState(parsed) : parsed; lineupResult = null; populateSettings(); renderAll(); saveState();
+      if (typeof persistFirestoreState === 'function') await persistFirestoreState({ restoredBackupAt: new Date().toISOString() });
+      toast('Backup restored to Firestore');
     } catch (err) { toast(err.message, 'error'); }
     e.target.value = '';
   });
-  document.getElementById('reset-data').addEventListener('click', () => {
-    if (!confirm('Clear all Fantasy Manager data stored in this browser?')) return;
-    localStorage.removeItem(STORAGE_KEY); state = defaults(); lineupResult = null; populateSettings(); renderAll(); toast('Local data reset');
-    maybeAutoRefresh();
-  });
+  document.getElementById('reset-draft-data')?.addEventListener('click', resetDraftData);
 
   document.body.addEventListener('click', e => {
     const go = e.target.closest('[data-go]');
