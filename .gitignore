@@ -1,0 +1,13 @@
+# Secrets
+.env
+.env.*
+oauth2.json
+*.token
+tokens/
+secrets/
+
+# Local/dev
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
