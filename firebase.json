@@ -3,11 +3,15 @@
     "source": "functions",
     "runtime": "nodejs22"
   },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "public": ".",
     "ignore": [
       "firebase.json",
       ".firebaserc",
+      "firestore.rules",
       "functions/**",
       ".git/**",
       ".github/**",
