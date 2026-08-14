@@ -28,12 +28,12 @@ function bindForms() {
 
 async function resetDraftData() {
   if (!confirm('Delete all draft picks and drafted rosters and restart the draft from Pick 1?\n\nLeague settings, team names, player rankings and league configuration will be kept.')) return;
-  state.picks=[]; state.manualRosterIds=[]; lineupResult=null;
+  state.picks=[]; state.manualRosterIds=[]; state.teamRosters={}; state.tradeTargets=[]; lineupResult=null;
   if(state.matchups&&typeof state.matchups==='object')state.matchups={};
   if(state.weeklyMatchups&&typeof state.weeklyMatchups==='object')state.weeklyMatchups={};
   if(Array.isArray(state.leagueTeams))state.leagueTeams.forEach(team=>{if(Array.isArray(team.rosterIds))team.rosterIds=[];if(Array.isArray(team.players))team.players=[];if(Array.isArray(team.roster))team.roster=[]});
   saveState(); renderAll(); if(typeof renderLeagueTeams==='function')renderLeagueTeams();
-  try{if(typeof persistFirestoreState==='function')await persistFirestoreState({draftResetAt:new Date().toISOString()});toast('Draft reset. League setup kept and Firestore updated.')}catch(err){toast('Draft reset, but Firestore sync failed. Use Save cloud before continuing.','error')}
+  try{if(typeof persistFirestoreState==='function')await persistFirestoreState({draftResetAt:new Date().toISOString()});toast('Draft reset. League setup kept and Firestore updated.')}catch(err){toast('Draft reset, but Firestore sync failed. It will retry automatically when the connection recovers.','error')}
 }
 
 function configureCloudDataUI(){
