@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Fantasy Manager is an AI-assisted fantasy football management application for personalized lineup, waiver, matchup, injury, and roster recommendations." />
+  <title>Fantasy Manager — AI-Assisted Fantasy Football Management</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="brand">
+      <span class="brand-mark">FM</span>
+      <span>Fantasy Manager</span>
+    </div>
+    <a class="nav-link" href="#about">About</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">FANTASY FOOTBALL · DECISION SUPPORT</div>
+      <h1>Manage your fantasy team with better information.</h1>
+      <p class="lead">
+        Fantasy Manager is an AI-assisted fantasy football management application designed
+        to turn authorized league, roster, matchup, transaction, injury, and player data
+        into clear weekly recommendations.
+      </p>
+      <div class="badges">
+        <span>Lineup analysis</span>
+        <span>Waiver recommendations</span>
+        <span>Matchup insights</span>
+        <span>Injury &amp; bye monitoring</span>
+      </div>
+    </section>
+
+    <section class="panel" id="about">
+      <div>
+        <div class="section-label">ABOUT</div>
+        <h2>A personal fantasy football assistant</h2>
+      </div>
+      <p>
+        The initial version of Fantasy Manager is intended for personal Yahoo Fantasy
+        Football team management. The application will use OAuth 2.0 so a user can
+        explicitly authorize access to their own fantasy information.
+      </p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-number">01</div>
+        <h3>Understand the roster</h3>
+        <p>
+          Review the current team, eligible positions, injuries, bye weeks, recent
+          transactions, and upcoming matchup context.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="card-number">02</div>
+        <h3>Find the best lineup</h3>
+        <p>
+          Compare available information and projections to recommend the strongest legal
+          starting lineup for the user's league settings.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="card-number">03</div>
+        <h3>Improve the bench</h3>
+        <p>
+          Identify useful free agents and waiver targets and highlight potential
+          add/drop opportunities for user review.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="card-number">04</div>
+        <h3>Keep the user in control</h3>
+        <p>
+          Any future transaction or lineup write capability is designed to be initiated
+          or explicitly approved by the authenticated user.
+        </p>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div>
+        <div class="section-label">YAHOO FANTASY API</div>
+        <h2>Planned integration</h2>
+      </div>
+      <p>
+        Fantasy Manager is seeking access to the Yahoo Fantasy Sports API for authorized
+        fantasy football data. The intended integration includes leagues, teams, rosters,
+        players, matchups, standings, transactions, free agents, and waiver information.
+      </p>
+    </section>
+
+    <section class="privacy">
+      <div class="section-label">PRIVACY</div>
+      <h2>Designed around user authorization</h2>
+      <p>
+        Fantasy Manager is intended to access fantasy information only after the user
+        authorizes the application through OAuth. Credentials and OAuth secrets should
+        never be exposed publicly or committed to this repository.
+      </p>
+      <a href="privacy.html">Read the privacy statement →</a>
+    </section>
+  </main>
+
+  <footer>
+    <div>
+      <strong>Fantasy Manager</strong>
+      <span>by Kreativ Software LLC</span>
+    </div>
+    <p>
+      Planned Yahoo Fantasy integration. Once API access is approved and Yahoo Fantasy
+      data is displayed, the product will include Yahoo's required attribution and
+      approved branding assets in accordance with Yahoo's developer requirements.
+    </p>
+  </footer>
+</body>
+</html>
