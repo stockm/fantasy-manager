@@ -1,0 +1,13 @@
+{
+  "name": "fantasy-manager-functions",
+  "private": true,
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions,hosting",
+    "deploy": "firebase deploy --only functions,hosting"
+  },
+  "dependencies": {
+    "firebase-functions": "^6.4.0"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "functions/**",
+      ".git/**",
+      ".github/**",
+      "node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|json)",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=300" }]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/ai-advice",
+        "function": {
+          "functionId": "aiAdvice",
+          "region": "us-central1",
+          "pinTag": true
+        }
+      }
+    ]
+  }
+}
