@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Fantasy Manager is a manual fantasy football roster, lineup and live draft assistant with planned Yahoo Fantasy integration." />
+  <meta name="description" content="Fantasy Manager is a manual fantasy football roster, lineup and live draft assistant with current 2026 rankings and planned Yahoo Fantasy integration." />
   <title>Fantasy Manager</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="feed.css" />
 </head>
 <body>
   <header class="topbar">
@@ -13,10 +14,11 @@
       <div class="brand-mark">FM</div>
       <div>
         <div class="brand-name">Fantasy Manager</div>
-        <div class="brand-sub">Manual mode · Yahoo sync coming after approval</div>
+        <div class="brand-sub">Manual Yahoo mode · live 2026 rankings</div>
       </div>
     </div>
     <div class="top-actions">
+      <span class="status-pill feed" id="live-source-pill">Rankings not loaded</span>
       <span class="status-pill manual">Manual</span>
       <a class="text-link" href="privacy.html">Privacy</a>
     </div>
@@ -32,7 +34,7 @@
       <button class="nav-item" data-tab="backup">Data & Backup</button>
       <div class="sidebar-note">
         <strong>Private by default</strong>
-        <span>Your league, roster and draft data stays in this browser.</span>
+        <span>Your league, roster and draft history stay in this browser. Public player/ranking feeds contain no Yahoo account data.</span>
       </div>
     </aside>
 
@@ -40,11 +42,20 @@
       <section class="view active" id="view-dashboard">
         <div class="page-head">
           <div>
-            <div class="eyebrow">MANUAL FANTASY CONTROL CENTER</div>
+            <div class="eyebrow">FANTASY CONTROL CENTER</div>
             <h1 id="dashboard-title">My Fantasy Team</h1>
-            <p class="page-copy">Set up your league, load player rankings, track every draft pick and optimize your lineup without waiting for Yahoo API access.</p>
+            <p class="page-copy">Load current 2026 rankings, track every Yahoo draft pick manually and optimize your roster while Yahoo API approval is pending.</p>
           </div>
           <button class="btn primary" data-go="draft">Open Draft Room</button>
+        </div>
+
+        <div class="feed-strip" id="dashboard-feed-strip">
+          <div>
+            <span class="section-label">LIVE DATA</span>
+            <strong id="dashboard-feed-title">No rankings loaded</strong>
+            <span id="dashboard-feed-detail">Go to Players and refresh live data.</span>
+          </div>
+          <button class="btn secondary small" data-go="players">Manage data</button>
         </div>
 
         <div class="kpi-grid">
@@ -57,22 +68,14 @@
         <div class="dashboard-grid">
           <article class="surface">
             <div class="surface-head">
-              <div>
-                <span class="section-label">DRAFT</span>
-                <h2>Next decision</h2>
-              </div>
+              <div><span class="section-label">DRAFT</span><h2>Next decision</h2></div>
               <span class="mini-pill" id="turn-pill">Waiting for setup</span>
             </div>
-            <div id="next-pick-summary" class="empty-state compact">Configure your league and import players to start draft recommendations.</div>
+            <div id="next-pick-summary" class="empty-state compact">Configure your league and load players to start draft recommendations.</div>
           </article>
 
           <article class="surface">
-            <div class="surface-head">
-              <div>
-                <span class="section-label">TOP AVAILABLE</span>
-                <h2>Best options</h2>
-              </div>
-            </div>
+            <div class="surface-head"><div><span class="section-label">TOP AVAILABLE</span><h2>Best options</h2></div></div>
             <div id="dashboard-recommendations" class="recommendation-list"></div>
           </article>
         </div>
@@ -83,7 +86,7 @@
           <div>
             <div class="eyebrow">STEP 1</div>
             <h1>League setup</h1>
-            <p class="page-copy">These settings drive the snake draft board, roster needs and lineup optimizer.</p>
+            <p class="page-copy">These settings drive the snake draft board, roster needs, ranking profile and lineup optimizer.</p>
           </div>
         </div>
 
@@ -104,9 +107,7 @@
           </div>
 
           <div class="divider"></div>
-          <div class="surface-head no-pad">
-            <div><span class="section-label">ROSTER</span><h2>Starting slots</h2></div>
-          </div>
+          <div class="surface-head no-pad"><div><span class="section-label">ROSTER</span><h2>Starting slots</h2></div></div>
           <div class="slot-grid">
             <label>QB<input id="slot-qb" type="number" min="0" max="4" /></label>
             <label>RB<input id="slot-rb" type="number" min="0" max="6" /></label>
@@ -118,10 +119,8 @@
             <label>K<input id="slot-k" type="number" min="0" max="2" /></label>
             <label>Bench<input id="slot-bench" type="number" min="0" max="15" /></label>
           </div>
-          <div class="form-actions">
-            <button class="btn primary" type="submit">Save league settings</button>
-            <span class="save-note" id="settings-save-note"></span>
-          </div>
+          <p class="helper">When Superflex is enabled, the live feed automatically uses FantasyPros PPR Superflex ECR. Otherwise it uses PPR overall ECR as the current redraft consensus source.</p>
+          <div class="form-actions"><button class="btn primary" type="submit">Save league settings</button><span class="save-note" id="settings-save-note"></span></div>
         </form>
       </section>
 
@@ -130,20 +129,42 @@
           <div>
             <div class="eyebrow">STEP 2</div>
             <h1>Player pool</h1>
-            <p class="page-copy">Import rankings/projections as CSV or add players manually. Rank and ADP power the draft assistant; projection powers lineup optimization.</p>
+            <p class="page-copy">Refresh current 2026 expert rankings and public player status data, or keep using manual CSV imports and edits.</p>
           </div>
           <button class="btn secondary" id="download-template">Download CSV template</button>
         </div>
 
+        <article class="surface live-feed-surface">
+          <div class="live-feed-grid">
+            <div>
+              <span class="section-label">2026 LIVE RANKINGS</span>
+              <h2>Current player database</h2>
+              <p class="helper">Draft rankings come from the latest FantasyPros expert-consensus dataset published through DynastyProcess/nflverse. Active-player and injury metadata is enriched from Sleeper's public NFL player endpoint.</p>
+              <div class="source-links"><a href="https://github.com/dynastyprocess/data" target="_blank" rel="noreferrer">DynastyProcess data</a><span>·</span><a href="https://docs.sleeper.com/" target="_blank" rel="noreferrer">Sleeper API</a></div>
+            </div>
+            <div class="feed-controls">
+              <div class="feed-status-card">
+                <span id="feed-status-dot" class="feed-dot idle"></span>
+                <div><strong id="feed-status-title">Not loaded</strong><span id="feed-status-detail">Refresh to load the current 2026 player pool.</span></div>
+              </div>
+              <button class="btn primary" id="refresh-live-data">Refresh live data</button>
+              <button class="btn secondary small" id="refresh-rankings-only">Rankings only</button>
+            </div>
+          </div>
+          <div class="feed-metrics">
+            <div><span>Ranking profile</span><strong id="feed-profile">—</strong></div>
+            <div><span>Dataset date</span><strong id="feed-dataset-date">—</strong></div>
+            <div><span>Ranked players</span><strong id="feed-ranked-count">0</strong></div>
+            <div><span>Status matches</span><strong id="feed-status-count">0</strong></div>
+          </div>
+          <div class="feed-warning" id="feed-warning" hidden></div>
+        </article>
+
         <div class="split-grid">
           <article class="surface">
-            <div class="surface-head"><div><span class="section-label">IMPORT</span><h2>Load CSV</h2></div></div>
-            <p class="helper">Supported columns: <code>name, team, position, rank, adp, projection, bye, tier, status</code>. Common alternatives like Player, Pos and ECR are recognized too.</p>
-            <label class="file-drop">
-              <input id="csv-file" type="file" accept=".csv,text/csv" />
-              <strong>Choose a rankings CSV</strong>
-              <span>Existing players with the same name/team will be updated.</span>
-            </label>
+            <div class="surface-head"><div><span class="section-label">CSV FALLBACK</span><h2>Load CSV</h2></div></div>
+            <p class="helper">Supported columns: <code>name, team, position, rank, adp, projection, bye, tier, status</code>. Imported ADP/projection values are preserved when live rankings refresh.</p>
+            <label class="file-drop"><input id="csv-file" type="file" accept=".csv,text/csv" /><strong>Choose a rankings CSV</strong><span>Existing players with the same name/team will be updated.</span></label>
             <div id="import-result" class="save-note"></div>
           </article>
 
@@ -153,7 +174,7 @@
               <input id="player-name" required placeholder="Player name" />
               <input id="player-team" placeholder="NFL team" />
               <input id="player-pos" required placeholder="Position e.g. WR" />
-              <input id="player-rank" type="number" step="1" placeholder="Rank" />
+              <input id="player-rank" type="number" step="0.1" placeholder="Rank" />
               <input id="player-adp" type="number" step="0.1" placeholder="ADP" />
               <input id="player-proj" type="number" step="0.1" placeholder="Projection" />
               <button class="btn primary" type="submit">Add player</button>
@@ -165,16 +186,8 @@
           <div class="table-toolbar">
             <div class="search-row">
               <input id="player-search" placeholder="Search players" />
-              <select id="player-pos-filter">
-                <option value="">All positions</option>
-                <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>D/ST</option><option>K</option>
-              </select>
-              <select id="player-status-filter">
-                <option value="available">Available</option>
-                <option value="all">All players</option>
-                <option value="drafted">Drafted</option>
-                <option value="roster">My roster</option>
-              </select>
+              <select id="player-pos-filter"><option value="">All positions</option><option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>D/ST</option><option>K</option></select>
+              <select id="player-status-filter"><option value="available">Available</option><option value="all">All players</option><option value="drafted">Drafted</option><option value="roster">My roster</option></select>
             </div>
             <span id="player-count" class="muted"></span>
           </div>
@@ -184,105 +197,58 @@
 
       <section class="view" id="view-draft">
         <div class="draft-hero">
-          <div>
-            <div class="eyebrow">LIVE MANUAL DRAFT</div>
-            <h1 id="draft-pick-title">Pick 1 · Round 1</h1>
-            <p id="draft-team-title" class="page-copy">Team 1 is on the clock</p>
-          </div>
-          <div class="draft-actions">
-            <button class="btn secondary" id="undo-pick">Undo last pick</button>
-            <button class="btn primary" id="jump-my-pick">Show my best options</button>
-          </div>
+          <div><div class="eyebrow">LIVE MANUAL DRAFT</div><h1 id="draft-pick-title">Pick 1 · Round 1</h1><p id="draft-team-title" class="page-copy">Team 1 is on the clock</p></div>
+          <div class="draft-actions"><button class="btn secondary" id="undo-pick">Undo last pick</button><button class="btn primary" id="jump-my-pick">Show my best options</button></div>
         </div>
+
+        <div class="draft-data-banner" id="draft-data-banner"><span class="feed-dot idle"></span><span>Rankings not loaded</span><button class="text-button" data-go="players">Refresh</button></div>
 
         <div class="draft-layout">
           <div class="draft-main">
             <article class="surface recommendation-surface">
-              <div class="surface-head">
-                <div><span class="section-label">RECOMMENDATIONS</span><h2 id="recommendation-title">Best available</h2></div>
-                <span class="mini-pill" id="my-next-pick"></span>
-              </div>
+              <div class="surface-head"><div><span class="section-label">RECOMMENDATIONS</span><h2 id="recommendation-title">Best available</h2></div><span class="mini-pill" id="my-next-pick"></span></div>
               <div id="draft-recommendations" class="draft-recs"></div>
             </article>
 
             <article class="surface table-surface" id="draft-player-panel">
-              <div class="table-toolbar">
-                <div class="search-row">
-                  <input id="draft-search" placeholder="Search available players" />
-                  <select id="draft-pos-filter">
-                    <option value="">All positions</option>
-                    <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>D/ST</option><option>K</option>
-                  </select>
-                </div>
-                <span class="muted" id="available-count"></span>
-              </div>
+              <div class="table-toolbar"><div class="search-row"><input id="draft-search" placeholder="Search available players" /><select id="draft-pos-filter"><option value="">All positions</option><option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>D/ST</option><option>K</option></select></div><span class="muted" id="available-count"></span></div>
               <div class="table-wrap draft-player-table"><table><thead><tr><th>Rank</th><th>Player</th><th>Pos</th><th>ADP</th><th>Proj</th><th>Value</th><th></th></tr></thead><tbody id="draft-players-body"></tbody></table></div>
-              <form id="quick-draft-form" class="quick-draft">
-                <input id="quick-draft-name" placeholder="Player missing? Type name" required />
-                <input id="quick-draft-pos" placeholder="Position" required />
-                <button class="btn secondary" type="submit">Add & record pick</button>
-              </form>
+              <form id="quick-draft-form" class="quick-draft"><input id="quick-draft-name" placeholder="Player missing? Type name" required /><input id="quick-draft-pos" placeholder="Position" required /><button class="btn secondary" type="submit">Add & record pick</button></form>
             </article>
           </div>
 
-          <aside class="draft-side">
-            <article class="surface sticky-card">
-              <div class="surface-head"><div><span class="section-label">MY TEAM</span><h2 id="draft-roster-name">My roster</h2></div></div>
-              <div id="draft-roster" class="mini-roster"></div>
-            </article>
-          </aside>
+          <aside class="draft-side"><article class="surface sticky-card"><div class="surface-head"><div><span class="section-label">MY TEAM</span><h2 id="draft-roster-name">My roster</h2></div></div><div id="draft-roster" class="mini-roster"></div></article></aside>
         </div>
 
-        <article class="surface board-surface">
-          <div class="surface-head"><div><span class="section-label">BOARD</span><h2>Draft board</h2></div></div>
-          <div id="draft-board" class="draft-board"></div>
-        </article>
+        <article class="surface board-surface"><div class="surface-head"><div><span class="section-label">BOARD</span><h2>Draft board</h2></div></div><div id="draft-board" class="draft-board"></div></article>
       </section>
 
       <section class="view" id="view-roster">
         <div class="page-head compact-head">
-          <div>
-            <div class="eyebrow">MY TEAM</div>
-            <h1 id="roster-title">My roster</h1>
-            <p class="page-copy">Your draft picks appear here automatically. You can also add players manually and edit weekly projections before optimizing.</p>
-          </div>
+          <div><div class="eyebrow">MY TEAM</div><h1 id="roster-title">My roster</h1><p class="page-copy">Your draft picks appear here automatically. Add weekly projections, then calculate the strongest legal lineup.</p></div>
           <button class="btn primary" id="optimize-lineup">Optimize lineup</button>
         </div>
-
         <div class="roster-layout">
-          <article class="surface table-surface">
-            <div class="surface-head"><div><span class="section-label">ROSTER</span><h2>Players</h2></div></div>
-            <div class="table-wrap"><table><thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>Projection</th><th>Source</th><th></th></tr></thead><tbody id="roster-body"></tbody></table></div>
-          </article>
-          <article class="surface">
-            <div class="surface-head"><div><span class="section-label">LINEUP</span><h2>Optimal starters</h2></div><strong id="lineup-total"></strong></div>
-            <div id="lineup-output" class="lineup-list"><div class="empty-state compact">Add projections, then click Optimize lineup.</div></div>
-          </article>
+          <article class="surface table-surface"><div class="surface-head"><div><span class="section-label">ROSTER</span><h2>Players</h2></div></div><div class="table-wrap"><table><thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>Projection</th><th>Source</th><th></th></tr></thead><tbody id="roster-body"></tbody></table></div></article>
+          <article class="surface"><div class="surface-head"><div><span class="section-label">LINEUP</span><h2>Optimal starters</h2></div><strong id="lineup-total"></strong></div><div id="lineup-output" class="lineup-list"><div class="empty-state compact">Add projections, then click Optimize lineup.</div></div></article>
         </div>
       </section>
 
       <section class="view" id="view-backup">
-        <div class="page-head compact-head">
-          <div>
-            <div class="eyebrow">LOCAL DATA</div>
-            <h1>Backup & restore</h1>
-            <p class="page-copy">Until Yahoo sync is approved, Fantasy Manager stores everything only in this browser using localStorage.</p>
-          </div>
-        </div>
+        <div class="page-head compact-head"><div><div class="eyebrow">LOCAL DATA</div><h1>Backup & restore</h1><p class="page-copy">Until Yahoo sync is approved, your league, draft and roster state lives only in this browser.</p></div></div>
         <div class="grid-3">
-          <article class="surface action-card"><span class="section-label">EXPORT</span><h2>Download backup</h2><p>Save league settings, players, draft history and roster as JSON.</p><button class="btn primary" id="export-backup">Download backup</button></article>
+          <article class="surface action-card"><span class="section-label">EXPORT</span><h2>Download backup</h2><p>Save league settings, players, feed metadata, draft history and roster as JSON.</p><button class="btn primary" id="export-backup">Download backup</button></article>
           <article class="surface action-card"><span class="section-label">RESTORE</span><h2>Import backup</h2><p>Restore a previously downloaded Fantasy Manager JSON file.</p><label class="btn secondary file-button">Choose backup<input id="backup-file" type="file" accept="application/json,.json" /></label></article>
           <article class="surface action-card danger-card"><span class="section-label">RESET</span><h2>Start over</h2><p>Clear all locally stored Fantasy Manager data on this browser.</p><button class="btn danger" id="reset-data">Reset local data</button></article>
         </div>
-        <article class="surface api-note">
-          <div><span class="section-label">FUTURE YAHOO ADAPTER</span><h2>No rewrite required</h2></div>
-          <p>The app uses one internal league/player/roster model. Once Yahoo credentials are approved, the Yahoo provider can populate the same model automatically while manual mode remains available as a fallback.</p>
-        </article>
+        <article class="surface api-note"><div><span class="section-label">FUTURE YAHOO ADAPTER</span><h2>No rewrite required</h2></div><p>Yahoo will eventually become another data provider for league, roster, draft and transaction state. The independent rankings/player feed remains useful even after Yahoo approval.</p></article>
       </section>
     </main>
   </div>
 
-  <div id="toast" class="toast" role="status"></div>
-  <script src="app.js"></script>
+  <div class="toast" id="toast"></div>
+  <script src="app-core.js"></script>
+  <script src="app-feed.js"></script>
+  <script src="app-ui.js"></script>
 </body>
 </html>
