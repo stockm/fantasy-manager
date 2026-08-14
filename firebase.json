@@ -1,37 +1,4 @@
 {
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs22"
-  },
-  "firestore": {
-    "rules": "firestore.rules"
-  },
-  "hosting": {
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      ".firebaserc",
-      "firestore.rules",
-      "functions/**",
-      ".git/**",
-      ".github/**",
-      "node_modules/**"
-    ],
-    "headers": [
-      {
-        "source": "**/*.@(js|css|json)",
-        "headers": [{ "key": "Cache-Control", "value": "public,max-age=300" }]
-      }
-    ],
-    "rewrites": [
-      {
-        "source": "/api/ai-advice",
-        "function": {
-          "functionId": "aiAdvice",
-          "region": "us-central1",
-          "pinTag": true
-        }
-      }
-    ]
-  }
-}
+  "functions": {"source":"functions","runtime":"nodejs22"},
+  "firestore":{"rules":"firestore.rules"},
+  "hosting":{"public":".","ignore":["firebase.json",".firebaserc","firestore.rules","functions/**",".git/**",".github/**","node_modules/**"],"headers":[{"source":"**/*.@(js|css|json)","headers":[{"key":"Cache-Control","value":"public,max-age=300"}]}],"rewrites":[{"source":"/api/ai-advice","function":{"functionId":"aiAdvice","region":"us-central1","pinTag":true}},{"source":"/api/nfl-week","function":{"functionId":"nflWeek","region":"us-central1","pinTag":true}}]}}
