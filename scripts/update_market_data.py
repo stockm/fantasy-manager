@@ -96,7 +96,12 @@ def get_soup(url: str) -> BeautifulSoup:
 
 
 def data_table(soup: BeautifulSoup):
-    table = soup.find("table", id="data") or soup.find("table")
+    node = soup.find(id="data")
+    if node is not None:
+        table = node if node.name == "table" else node.find_parent("table")
+        if table is not None:
+            return table
+    table = soup.find("table", class_=re.compile("table|player", re.I)) or soup.find("table")
     if not table:
         raise RuntimeError("FantasyPros data table not found")
     return table
@@ -120,7 +125,6 @@ def player_name_from_cell(cell) -> str:
         name = link.get_text(" ", strip=True)
         if name:
             return name
-    # Remove common trailing team/bye fragments if no link was found.
     text = cell.get_text(" ", strip=True)
     return re.sub(r"\s+[A-Z]{2,3}(?:\s*\(\d+\))?$", "", text).strip()
 
@@ -147,16 +151,20 @@ def parse_adp() -> tuple[dict[str, dict[str, Any]], str]:
                 return norm.index(key)
         return None
 
+    # Current FantasyPros Half-PPR overall layout:
+    # Rank | Player (Bye) | POS | Yahoo | Sleeper | RTSports | AVG | Real-Time
+    i_rank = idx("Rank", "RK")
     i_player = idx("Player (Bye)", "Player")
     i_pos = idx("POS", "Position")
     i_yahoo = idx("Yahoo", "Yahoo! Sports")
     i_sleeper = idx("Sleeper")
     i_avg = idx("AVG", "Average")
-    i_rank = idx("Rank", "RK")
-    if i_player is None:
-        i_player = 1
-    if i_pos is None:
-        i_pos = 2
+    i_rank = 0 if i_rank is None else i_rank
+    i_player = 1 if i_player is None else i_player
+    i_pos = 2 if i_pos is None else i_pos
+    i_yahoo = 3 if i_yahoo is None else i_yahoo
+    i_sleeper = 4 if i_sleeper is None else i_sleeper
+    i_avg = 6 if i_avg is None else i_avg
 
     players: dict[str, dict[str, Any]] = {}
     for tr in table.select("tbody tr"):
@@ -177,10 +185,10 @@ def parse_adp() -> tuple[dict[str, dict[str, Any]], str]:
             "team": team,
             "position": pos,
             "bye": bye,
-            "adp": f(row[i_avg]) if i_avg is not None and i_avg < len(row) else None,
-            "yahooAdp": f(row[i_yahoo]) if i_yahoo is not None and i_yahoo < len(row) else None,
-            "sleeperAdp": f(row[i_sleeper]) if i_sleeper is not None and i_sleeper < len(row) else None,
-            "adpRank": f(row[i_rank]) if i_rank is not None and i_rank < len(row) else None,
+            "adp": f(row[i_avg]) if i_avg < len(row) else None,
+            "yahooAdp": f(row[i_yahoo]) if i_yahoo < len(row) else None,
+            "sleeperAdp": f(row[i_sleeper]) if i_sleeper < len(row) else None,
+            "adpRank": f(row[i_rank]) if i_rank < len(row) else None,
         }
         players[canon_name(name)] = record
 
@@ -208,7 +216,11 @@ def stats_values(tr) -> tuple[str, str, list[float | None]]:
 
 
 def yahoo_half_ppr_points(pos: str, vals: list[float | None]) -> tuple[float | None, str]:
-    z = lambda i: vals[i] or 0.0 if i < len(vals) else 0.0
+    def z(i: int) -> float:
+        if i >= len(vals) or vals[i] is None:
+            return 0.0
+        return float(vals[i])
+
     try:
         if pos == "QB":
             # pass ATT, CMP, YDS, TD, INT, rush ATT, YDS, TD, FL, source FPTS
@@ -223,7 +235,7 @@ def yahoo_half_ppr_points(pos: str, vals: list[float | None]) -> tuple[float | N
             pts = z(0) * 0.5 + z(1) / 10 + z(2) * 6 + z(4) / 10 + z(5) * 6 - z(6) * 2
             return round1(pts), "exact-offense"
         if pos == "TE":
-            # REC, YDS, TD, FL, source FPTS (FantasyPros currently has this layout)
+            # REC, YDS, TD, FL, source FPTS
             if len(vals) >= 5:
                 pts = z(0) * 0.5 + z(1) / 10 + z(2) * 6 - z(3) * 2
                 return round1(pts), "exact-offense"
