@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""Build browser-friendly 2026 fantasy-football market data.
+"""Build browser-friendly 2026 draft market data for Fantasy Manager.
 
-Primary sources:
-- FantasyPros 2026 Half-PPR ADP composite (including Yahoo/Sleeper/RTSports columns)
-- FantasyPros consensus season projections
-
-The script stores only transformed player-level values needed by Fantasy Manager.
+ADP: Fantasy Football Calculator's public 14-team half-PPR REST API.
+Projections: FantasyPros public 2026 consensus season-projection pages.
+QB/RB/WR/TE projected points are recalculated with the user's Yahoo scoring.
 """
-
 from __future__ import annotations
 
 import json
@@ -22,13 +19,8 @@ from bs4 import BeautifulSoup
 
 YEAR = 2026
 OUT = Path("data/market-2026.json")
-UA = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150 Safari/537.36 "
-    "FantasyManager/1.0"
-)
-
-ADP_URL = "https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php"
+UA = "FantasyManager/1.0 (+https://stockm.github.io/fantasy-manager/)"
+FFC_ADP_URL = "https://fantasyfootballcalculator.com/api/v1/adp/half-ppr?teams=14&year=2026&position=all"
 PROJ_URLS = {
     "QB": "https://www.fantasypros.com/nfl/projections/qb.php?week=draft",
     "RB": "https://www.fantasypros.com/nfl/projections/rb.php?week=draft",
@@ -37,305 +29,190 @@ PROJ_URLS = {
     "K": "https://www.fantasypros.com/nfl/projections/k.php?week=draft",
     "D/ST": "https://www.fantasypros.com/nfl/projections/dst.php?week=draft",
 }
-
+TEAM_ALIASES = {"JAX":"JAC","KCC":"KC","GBP":"GB","NEP":"NE","NOS":"NO","SFO":"SF","TBB":"TB","LVR":"LV","DEF":"D/ST","DST":"D/ST"}
 TEAM_BY_DEFENSE = {
-    "Arizona Cardinals": "ARI", "Atlanta Falcons": "ATL", "Baltimore Ravens": "BAL",
-    "Buffalo Bills": "BUF", "Carolina Panthers": "CAR", "Chicago Bears": "CHI",
-    "Cincinnati Bengals": "CIN", "Cleveland Browns": "CLE", "Dallas Cowboys": "DAL",
-    "Denver Broncos": "DEN", "Detroit Lions": "DET", "Green Bay Packers": "GB",
-    "Houston Texans": "HOU", "Indianapolis Colts": "IND", "Jacksonville Jaguars": "JAC",
-    "Kansas City Chiefs": "KC", "Las Vegas Raiders": "LV", "Los Angeles Chargers": "LAC",
-    "Los Angeles Rams": "LAR", "Miami Dolphins": "MIA", "Minnesota Vikings": "MIN",
-    "New England Patriots": "NE", "New Orleans Saints": "NO", "New York Giants": "NYG",
-    "New York Jets": "NYJ", "Philadelphia Eagles": "PHI", "Pittsburgh Steelers": "PIT",
-    "San Francisco 49ers": "SF", "Seattle Seahawks": "SEA", "Tampa Bay Buccaneers": "TB",
-    "Tennessee Titans": "TEN", "Washington Commanders": "WAS",
+    "Arizona Cardinals":"ARI","Atlanta Falcons":"ATL","Baltimore Ravens":"BAL","Buffalo Bills":"BUF",
+    "Carolina Panthers":"CAR","Chicago Bears":"CHI","Cincinnati Bengals":"CIN","Cleveland Browns":"CLE",
+    "Dallas Cowboys":"DAL","Denver Broncos":"DEN","Detroit Lions":"DET","Green Bay Packers":"GB",
+    "Houston Texans":"HOU","Indianapolis Colts":"IND","Jacksonville Jaguars":"JAC","Kansas City Chiefs":"KC",
+    "Las Vegas Raiders":"LV","Los Angeles Chargers":"LAC","Los Angeles Rams":"LAR","Miami Dolphins":"MIA",
+    "Minnesota Vikings":"MIN","New England Patriots":"NE","New Orleans Saints":"NO","New York Giants":"NYG",
+    "New York Jets":"NYJ","Philadelphia Eagles":"PHI","Pittsburgh Steelers":"PIT","San Francisco 49ers":"SF",
+    "Seattle Seahawks":"SEA","Tampa Bay Buccaneers":"TB","Tennessee Titans":"TEN","Washington Commanders":"WAS",
 }
 
-TEAM_ALIASES = {"JAX": "JAC", "KCC": "KC", "GBP": "GB", "NEP": "NE", "NOS": "NO", "SFO": "SF", "TBB": "TB", "LVR": "LV"}
+
+def canon_name(v: str) -> str:
+    v = v.lower()
+    v = re.sub(r"\b(jr|sr|ii|iii|iv)\b\.?", "", v)
+    return re.sub(r"[^a-z0-9]", "", v)
 
 
-def canon_name(value: str) -> str:
-    value = value.lower()
-    value = re.sub(r"\b(jr|sr|ii|iii|iv)\b\.?", "", value)
-    return re.sub(r"[^a-z0-9]", "", value)
+def canon_team(v: str) -> str:
+    x = (v or "").strip().upper()
+    return TEAM_ALIASES.get(x, x)
 
 
-def canon_team(value: str) -> str:
-    v = (value or "").strip().upper()
-    return TEAM_ALIASES.get(v, v)
-
-
-def f(value: Any) -> float | None:
-    if value is None:
-        return None
-    s = str(value).replace(",", "").replace("—", "").strip()
-    if not s or s.upper() in {"NA", "N/A", "-"}:
-        return None
+def number(v: Any) -> float | None:
+    if v is None: return None
+    s = str(v).replace(",", "").replace("—", "").strip()
+    if not s or s.upper() in {"NA","N/A","-"}: return None
     try:
-        n = float(s)
-        return n if math.isfinite(n) else None
+        x = float(s)
+        return x if math.isfinite(x) else None
     except ValueError:
         return None
 
 
-def round1(value: float | None) -> float | None:
-    return None if value is None else round(value, 1)
+def r1(v: float | None) -> float | None:
+    return None if v is None else round(v, 1)
 
 
-def get_soup(url: str) -> BeautifulSoup:
-    r = requests.get(
-        url,
-        headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9", "Accept": "text/html,application/xhtml+xml"},
-        timeout=35,
-    )
+def get(url: str, *, json_response: bool = False):
+    r = requests.get(url, headers={"User-Agent": UA, "Accept-Language":"en-US,en;q=0.9"}, timeout=35)
     r.raise_for_status()
-    if "Fantasy Football" not in r.text and "Average Draft Position" not in r.text:
-        raise RuntimeError(f"Unexpected response from {url}")
-    return BeautifulSoup(r.text, "html.parser")
+    return r.json() if json_response else r.text
 
 
-def data_table(soup: BeautifulSoup):
-    node = soup.find(id="data")
-    if node is not None:
-        table = node if node.name == "table" else node.find_parent("table")
-        if table is not None:
-            return table
-    table = soup.find("table", class_=re.compile("table|player", re.I)) or soup.find("table")
-    if not table:
-        raise RuntimeError("FantasyPros data table not found")
-    return table
-
-
-def header_cells(table) -> list[str]:
-    rows = table.find("thead").find_all("tr") if table.find("thead") else []
-    if not rows:
-        return []
-    # The final header row contains the concrete columns on FantasyPros tables.
-    return [x.get_text(" ", strip=True) for x in rows[-1].find_all(["th", "td"])]
-
-
-def cell_texts(tr) -> list[str]:
-    return [c.get_text(" ", strip=True) for c in tr.find_all("td", recursive=False)]
-
-
-def player_name_from_cell(cell) -> str:
-    link = cell.find("a")
-    if link:
-        name = link.get_text(" ", strip=True)
-        if name:
-            return name
-    text = cell.get_text(" ", strip=True)
-    return re.sub(r"\s+[A-Z]{2,3}(?:\s*\(\d+\))?$", "", text).strip()
-
-
-def team_bye_from_cell(cell, player_name: str) -> tuple[str, str]:
-    text = cell.get_text(" ", strip=True)
-    rest = text[len(player_name):].strip() if text.startswith(player_name) else text
-    m = re.search(r"\b([A-Z]{2,3})\b(?:\s*\((\d+)\))?", rest)
-    if m:
-        return canon_team(m.group(1)), m.group(2) or ""
-    return "", ""
-
-
-def parse_adp() -> tuple[dict[str, dict[str, Any]], str]:
-    soup = get_soup(ADP_URL)
-    table = data_table(soup)
-    headers = header_cells(table)
-    norm = [re.sub(r"[^a-z0-9]", "", h.lower()) for h in headers]
-
-    def idx(*names: str) -> int | None:
-        for name in names:
-            key = re.sub(r"[^a-z0-9]", "", name.lower())
-            if key in norm:
-                return norm.index(key)
-        return None
-
-    # Current FantasyPros Half-PPR overall layout:
-    # Rank | Player (Bye) | POS | Yahoo | Sleeper | RTSports | AVG | Real-Time
-    i_rank = idx("Rank", "RK")
-    i_player = idx("Player (Bye)", "Player")
-    i_pos = idx("POS", "Position")
-    i_yahoo = idx("Yahoo", "Yahoo! Sports")
-    i_sleeper = idx("Sleeper")
-    i_avg = idx("AVG", "Average")
-    i_rank = 0 if i_rank is None else i_rank
-    i_player = 1 if i_player is None else i_player
-    i_pos = 2 if i_pos is None else i_pos
-    i_yahoo = 3 if i_yahoo is None else i_yahoo
-    i_sleeper = 4 if i_sleeper is None else i_sleeper
-    i_avg = 6 if i_avg is None else i_avg
-
-    players: dict[str, dict[str, Any]] = {}
-    for tr in table.select("tbody tr"):
-        cells = tr.find_all("td", recursive=False)
-        if len(cells) <= max(i_player, i_pos):
-            continue
-        name = player_name_from_cell(cells[i_player])
-        if not name:
-            continue
-        team, bye = team_bye_from_cell(cells[i_player], name)
-        pos_text = cells[i_pos].get_text(" ", strip=True).upper()
-        pos = re.sub(r"\d+$", "", pos_text).replace("DST", "D/ST")
-        if pos not in {"QB", "RB", "WR", "TE", "K", "D/ST"}:
-            continue
-        row = cell_texts(tr)
-        record = {
+def parse_adp() -> dict[str, dict[str, Any]]:
+    payload = get(FFC_ADP_URL, json_response=True)
+    rows = payload.get("players", payload if isinstance(payload, list) else [])
+    out: dict[str, dict[str, Any]] = {}
+    for p in rows:
+        name = str(p.get("name") or "").strip()
+        pos = str(p.get("position") or "").upper().replace("DEF", "D/ST").replace("DST", "D/ST")
+        if not name or pos not in {"QB","RB","WR","TE","K","D/ST"}: continue
+        out[canon_name(name)] = {
             "name": name,
-            "team": team,
+            "team": canon_team(str(p.get("team") or "")),
             "position": pos,
-            "bye": bye,
-            "adp": f(row[i_avg]) if i_avg < len(row) else None,
-            "yahooAdp": f(row[i_yahoo]) if i_yahoo < len(row) else None,
-            "sleeperAdp": f(row[i_sleeper]) if i_sleeper < len(row) else None,
-            "adpRank": f(row[i_rank]) if i_rank < len(row) else None,
+            "bye": str(p.get("bye") or ""),
+            "adp": number(p.get("adp")),
+            "adpHigh": number(p.get("high")),
+            "adpLow": number(p.get("low")),
+            "adpStdev": number(p.get("stdev")),
+            "timesDrafted": p.get("times_drafted"),
         }
-        players[canon_name(name)] = record
-
-    if len(players) < 100:
-        raise RuntimeError(f"ADP scrape returned only {len(players)} players")
-
-    heading = soup.find(["h1", "h2"], string=re.compile("2026|ADP", re.I))
-    return players, heading.get_text(" ", strip=True) if heading else "2026 Half-PPR ADP"
+    if len(out) < 100:
+        raise RuntimeError(f"14-team half-PPR ADP API returned only {len(out)} usable players")
+    return out
 
 
-def parse_projection_date(soup: BeautifulSoup) -> str:
-    text = " ".join(x.get_text(" ", strip=True) for x in soup.find_all(["h1", "h2"])[:4])
+def soup(url: str) -> BeautifulSoup:
+    return BeautifulSoup(get(url), "html.parser")
+
+
+def projection_table(s: BeautifulSoup):
+    node = s.find(id="data")
+    if node:
+        table = node if node.name == "table" else node.find_parent("table")
+        if table: return table
+    tables = s.find_all("table")
+    for table in tables:
+        text = table.get_text(" ", strip=True)
+        if "Player" in text and ("FPTS" in text or "PASSING" in text or "RUSHING" in text): return table
+    raise RuntimeError("FantasyPros projection table not found")
+
+
+def player_name(cell) -> str:
+    links = [a.get_text(" ", strip=True) for a in cell.find_all("a")]
+    links = [x for x in links if x]
+    if links: return max(links, key=len)
+    text = cell.get_text(" ", strip=True)
+    return re.sub(r"\s+[A-Z]{2,3}$", "", text).strip()
+
+
+def team_from_cell(cell, name: str) -> str:
+    text = cell.get_text(" ", strip=True)
+    rest = text[len(name):].strip() if text.startswith(name) else text
+    m = re.search(r"\b([A-Z]{2,3})\b", rest)
+    return canon_team(m.group(1)) if m else ""
+
+
+def projected_points(pos: str, vals: list[float | None]) -> tuple[float | None, str]:
+    def z(i: int) -> float:
+        return 0.0 if i >= len(vals) or vals[i] is None else float(vals[i])
+    if pos == "QB" and len(vals) >= 10:
+        return r1(z(2)/25 + z(3)*4 - z(4) + z(6)/10 + z(7)*6 - z(8)*2), "custom-yahoo-offense"
+    if pos == "RB" and len(vals) >= 8:
+        return r1(z(1)/10 + z(2)*6 + z(3)*0.5 + z(4)/10 + z(5)*6 - z(6)*2), "custom-yahoo-offense"
+    if pos == "WR" and len(vals) >= 8:
+        return r1(z(0)*0.5 + z(1)/10 + z(2)*6 + z(4)/10 + z(5)*6 - z(6)*2), "custom-yahoo-offense"
+    if pos == "TE" and len(vals) >= 5:
+        return r1(z(0)*0.5 + z(1)/10 + z(2)*6 - z(3)*2), "custom-yahoo-offense"
+    return r1(vals[-1] if vals else None), "approx-source-fpts"
+
+
+def projection_date(s: BeautifulSoup) -> str:
+    text = " ".join(x.get_text(" ", strip=True) for x in s.find_all(["h1","h2"])[:5])
     m = re.search(r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},\s+2026", text, re.I)
     return m.group(0) if m else ""
-
-
-def stats_values(tr) -> tuple[str, str, list[float | None]]:
-    cells = tr.find_all("td", recursive=False)
-    if not cells:
-        return "", "", []
-    name = player_name_from_cell(cells[0])
-    team, _ = team_bye_from_cell(cells[0], name)
-    vals = [f(c.get_text(" ", strip=True)) for c in cells[1:]]
-    return name, team, vals
-
-
-def yahoo_half_ppr_points(pos: str, vals: list[float | None]) -> tuple[float | None, str]:
-    def z(i: int) -> float:
-        if i >= len(vals) or vals[i] is None:
-            return 0.0
-        return float(vals[i])
-
-    try:
-        if pos == "QB":
-            # pass ATT, CMP, YDS, TD, INT, rush ATT, YDS, TD, FL, source FPTS
-            pts = z(2) / 25 + z(3) * 4 - z(4) + z(6) / 10 + z(7) * 6 - z(8) * 2
-            return round1(pts), "exact-offense"
-        if pos == "RB":
-            # rush ATT, YDS, TD, REC, rec YDS, rec TD, FL, source FPTS
-            pts = z(1) / 10 + z(2) * 6 + z(3) * 0.5 + z(4) / 10 + z(5) * 6 - z(6) * 2
-            return round1(pts), "exact-offense"
-        if pos == "WR":
-            # REC, rec YDS, rec TD, rush ATT, rush YDS, rush TD, FL, source FPTS
-            pts = z(0) * 0.5 + z(1) / 10 + z(2) * 6 + z(4) / 10 + z(5) * 6 - z(6) * 2
-            return round1(pts), "exact-offense"
-        if pos == "TE":
-            # REC, YDS, TD, FL, source FPTS
-            if len(vals) >= 5:
-                pts = z(0) * 0.5 + z(1) / 10 + z(2) * 6 - z(3) * 2
-                return round1(pts), "exact-offense"
-        if pos == "K":
-            # Distance buckets are not in the consensus projection table. Use source FPTS as approximation.
-            return round1(vals[-1] if vals else None), "approx-kicker"
-        if pos == "D/ST":
-            # Full Yahoo PA bucket/block-kick detail is not projected. Use source FPTS as approximation.
-            return round1(vals[-1] if vals else None), "approx-defense"
-    except (IndexError, TypeError):
-        pass
-    return round1(vals[-1] if vals else None), "source-fpts"
 
 
 def parse_projections() -> tuple[dict[str, dict[str, Any]], str]:
     out: dict[str, dict[str, Any]] = {}
     dates: list[str] = []
     for pos, url in PROJ_URLS.items():
-        soup = get_soup(url)
-        d = parse_projection_date(soup)
-        if d:
-            dates.append(d)
-        table = data_table(soup)
+        s = soup(url)
+        d = projection_date(s)
+        if d: dates.append(d)
+        table = projection_table(s)
+        rows = table.select("tbody tr") or table.select("tr")
         count = 0
-        for tr in table.select("tbody tr"):
-            name, team, vals = stats_values(tr)
-            if not name or not vals:
-                continue
-            if pos == "D/ST":
-                team = TEAM_BY_DEFENSE.get(name, team)
-            custom, quality = yahoo_half_ppr_points(pos, vals)
-            source_fpts = round1(vals[-1] if vals else None)
-            key = canon_name(name)
-            out[key] = {
-                "name": name,
-                "team": canon_team(team),
-                "position": pos,
-                "projection": custom,
-                "sourceProjection": source_fpts,
-                "projectionQuality": quality,
+        for tr in rows:
+            cells = tr.find_all("td", recursive=False)
+            if len(cells) < 2: continue
+            name = player_name(cells[0])
+            if not name or name.lower() == "player": continue
+            team = TEAM_BY_DEFENSE.get(name, team_from_cell(cells[0], name)) if pos == "D/ST" else team_from_cell(cells[0], name)
+            vals = [number(c.get_text(" ", strip=True)) for c in cells[1:]]
+            if not any(v is not None for v in vals): continue
+            points, quality = projected_points(pos, vals)
+            out[canon_name(name)] = {
+                "name": name, "team": team, "position": pos,
+                "projection": points, "sourceProjection": r1(vals[-1]), "projectionQuality": quality,
             }
             count += 1
-        if count < (20 if pos in {"K", "D/ST", "QB", "TE"} else 40):
-            raise RuntimeError(f"Projection scrape for {pos} returned only {count} rows")
+        minimum = 18 if pos in {"QB","TE","K","D/ST"} else 35
+        if count < minimum:
+            raise RuntimeError(f"Projection source for {pos} returned only {count} rows")
     return out, max(dates) if dates else ""
 
 
 def build() -> dict[str, Any]:
-    adp, adp_label = parse_adp()
-    proj, proj_date = parse_projections()
-    keys = set(adp) | set(proj)
+    adp = parse_adp()
+    projections, pdate = parse_projections()
     players = []
-    for key in keys:
-        a = adp.get(key, {})
-        p = proj.get(key, {})
-        name = p.get("name") or a.get("name") or ""
-        team = p.get("team") or a.get("team") or ""
-        pos = p.get("position") or a.get("position") or ""
-        if not name or not pos:
-            continue
+    for key in set(adp) | set(projections):
+        a, p = adp.get(key, {}), projections.get(key, {})
+        name = p.get("name") or a.get("name")
+        pos = p.get("position") or a.get("position")
+        if not name or not pos: continue
         players.append({
             "name": name,
-            "team": canon_team(team),
+            "team": canon_team(p.get("team") or a.get("team") or ""),
             "position": pos,
             "bye": a.get("bye") or "",
-            "adp": round1(a.get("adp")),
-            "yahooAdp": round1(a.get("yahooAdp")),
-            "sleeperAdp": round1(a.get("sleeperAdp")),
-            "adpRank": round1(a.get("adpRank")),
-            "projection": p.get("projection"),
-            "sourceProjection": p.get("sourceProjection"),
+            "adp": r1(a.get("adp")),
+            "adpHigh": r1(a.get("adpHigh")), "adpLow": r1(a.get("adpLow")), "adpStdev": r1(a.get("adpStdev")),
+            "timesDrafted": a.get("timesDrafted"),
+            "projection": p.get("projection"), "sourceProjection": p.get("sourceProjection"),
             "projectionQuality": p.get("projectionQuality") or "",
         })
-
-    players.sort(key=lambda x: (
-        x["yahooAdp"] if x["yahooAdp"] is not None else x["adp"] if x["adp"] is not None else 9999,
-        -(x["projection"] or 0),
-        x["name"],
-    ))
-
-    if len(players) < 150:
-        raise RuntimeError(f"Combined market data returned only {len(players)} players")
-
+    players.sort(key=lambda x: (x["adp"] if x["adp"] is not None else 9999, -(x["projection"] or 0), x["name"]))
+    if len(players) < 150: raise RuntimeError(f"Combined market dataset returned only {len(players)} players")
     return {
-        "schemaVersion": 1,
-        "season": YEAR,
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "projectionDate": proj_date,
-        "adpLabel": adp_label,
+        "schemaVersion": 2, "season": YEAR, "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "projectionDate": pdate,
         "sources": {
-            "adp": "FantasyPros 2026 Half-PPR ADP composite",
-            "adpComponents": ["Yahoo", "Sleeper", "RTSports"],
-            "projection": "FantasyPros consensus season projections",
-            "projectionComponents": ["ESPN", "CBS Sports", "FFToday"],
-            "scoring": "Yahoo league custom half-PPR scoring supplied by league owner",
+            "adp": "Fantasy Football Calculator 2026 14-team half-PPR ADP REST API",
+            "projection": "FantasyPros 2026 consensus season projections",
+            "scoring": "Custom Yahoo half-PPR league scoring supplied by league owner"
         },
         "notes": {
-            "offenseProjection": "QB/RB/WR/TE points are recalculated from projected stats using the league's 0.5 PPR, 25 pass yards/pt, 4 pass TD, -1 INT, 10 rush/rec yards/pt, 6 TD and -2 fumble-lost settings.",
-            "kickerProjection": "Approximate because consensus projections do not expose field-goal distance buckets.",
-            "defenseProjection": "Approximate because consensus projections do not expose every Yahoo points-allowed bucket and blocked-kick component.",
+            "offenseProjection": "QB/RB/WR/TE are rescored from consensus projected stats for this league.",
+            "kickerProjection": "Approximate: consensus projection does not expose every FG distance/miss bucket.",
+            "defenseProjection": "Approximate: consensus projection does not expose every Yahoo points-allowed/blocked-kick input."
         },
         "players": players,
     }
@@ -347,6 +224,4 @@ def main() -> None:
     OUT.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Wrote {len(data['players'])} players to {OUT}")
 
-
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
