@@ -1,37 +1,62 @@
 # Fantasy Manager
 
-**Fantasy Manager** is an AI-assisted fantasy football management application being developed by Kreativ Software LLC.
+**Fantasy Manager** is an AI-assisted fantasy football management and live draft assistant being developed by Kreativ Software LLC.
 
-The product is designed to help an authenticated user make better weekly fantasy-football decisions by analyzing authorized league and team information and turning it into clear recommendations.
+## Manual mode — available now
 
-## Planned capabilities
+The GitHub Pages app works without Yahoo API credentials. Data is stored locally in the browser.
 
-- Roster and lineup analysis
-- Start / bench recommendations
-- Waiver-wire and free-agent analysis
-- Add / drop recommendations
-- Matchup analysis
-- Injury and bye-week monitoring
-- League standings and recent transaction context
-- User-approved lineup or roster actions if appropriate write access is granted
+Current features:
 
-## Yahoo Fantasy Sports API
+- League and roster configuration
+- Manual player entry
+- CSV rankings / ADP / projection import
+- Live snake-draft tracking for every team
+- Automatic round, overall-pick and team-slot calculation
+- Best-available draft recommendations using rank, ADP, roster need and projections
+- Automatic roster building from the user's recorded draft selections
+- Manual roster additions
+- Weekly projection editing
+- Legal lineup optimization for QB, RB, WR, TE, FLEX, SUPERFLEX, D/ST and K
+- Undo last draft pick
+- Full draft board
+- JSON backup and restore
+- Local-only storage via `localStorage`
+
+Use the site at `https://stockm.github.io/fantasy-manager/`.
+
+### Player CSV
+
+The app accepts CSV files with these columns:
+
+```csv
+name,team,position,rank,adp,projection,bye,tier,status
+```
+
+Common alternatives such as `Player`, `Pos`, `ECR`, `Proj` and `FPTS` are also recognized.
+
+## Planned Yahoo Fantasy Sports API integration
 
 Fantasy Manager is seeking access to the Yahoo Fantasy Sports API. The intended integration uses OAuth 2.0 so each user explicitly authorizes access to their own fantasy information.
 
-Initial usage is intended for personal Yahoo Fantasy Football team management and a low volume of API requests.
+Yahoo will be implemented as a data provider for the same internal league/player/roster model used by manual mode. This means manual mode remains a fallback and the application does not need to be rewritten when API access is approved.
 
-If read/write access is granted and implemented, write operations are intended to be initiated or explicitly approved by the authenticated user.
+Planned synced capabilities include:
+
+- League settings and rosters
+- Matchups and standings
+- Player availability
+- Waivers and recent transactions
+- Injury / bye monitoring
+- Start / bench recommendations
+- Waiver-wire and add/drop recommendations
+- User-approved lineup or roster actions if appropriate write access is granted
 
 ## Privacy
 
-Authentication credentials, client secrets, and OAuth tokens must not be committed to this repository.
+Manual-mode league, player, draft and roster information is stored in the user's browser. Authentication credentials, client secrets, and OAuth tokens must never be committed to this repository.
 
-See [privacy.html](privacy.html) for the prototype privacy statement.
-
-## Website
-
-This repository includes a static product landing page suitable for hosting with GitHub Pages.
+See [privacy.html](privacy.html) for the privacy statement.
 
 ## Yahoo attribution
 
