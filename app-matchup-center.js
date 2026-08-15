@@ -1,0 +1,130 @@
+// Dedicated week-first Matchup Center. Keeps league naming/setup separate from weekly decisions.
+(function installMatchupCenter(){
+  const mySlot=()=>Number(state.settings?.draftSlot||1);
+  const clampWeek=v=>Math.max(1,Math.min(18,Number(v)||1));
+  const currentWeek=()=>clampWeek(document.getElementById('matchup-center-week')?.value||state.currentWeek||1);
+
+  function ensureData(){
+    if(!state.weeklyMatchups||typeof state.weeklyMatchups!=='object')state.weeklyMatchups={};
+    if(!state.matchups||typeof state.matchups!=='object')state.matchups={};
+  }
+  function rowsForWeek(week){
+    ensureData();
+    const raw=state.weeklyMatchups[String(week)];
+    if(Array.isArray(raw)&&raw.length)return raw.map(r=>({teamA:Number(r.teamA),teamB:Number(r.teamB)})).filter(r=>r.teamA&&r.teamB&&r.teamA!==r.teamB);
+    const opp=Number(state.matchups[String(week)]||0);
+    return opp?[{teamA:mySlot(),teamB:opp}]:[];
+  }
+  function syncMyOpponent(week){
+    const mine=rowsForWeek(week).find(r=>r.teamA===mySlot()||r.teamB===mySlot());
+    if(!mine)return 0;
+    const opp=mine.teamA===mySlot()?mine.teamB:mine.teamA;
+    if(Number(state.matchups[String(week)]||0)!==opp){state.matchups[String(week)]=opp;saveState()}
+    return opp;
+  }
+  function weekPlayer(p,week){
+    if(typeof weeklyPlayerContext==='function')return weeklyPlayerContext(p,week);
+    const x=typeof adjustedWeeklyProjection==='function'?adjustedWeeklyProjection(p,week):{adjusted:playerWeeklyValue(p),opponent:null,home:null};
+    return{name:p.name,pos:primaryPos(p),team:p.team||'',adjustedWeeklyProjection:Number(x.adjusted||0),nflOpponent:x.opponent||null,home:x.home??null,status:p.status||''};
+  }
+  function teamLineup(slot,week){
+    const roster=typeof rosterForSlot==='function'?rosterForSlot(slot):[];
+    if(typeof window.bestWeeklyLineup==='function')return window.bestWeeklyLineup(roster,week);
+    return{week,total:roster.reduce((s,p)=>s+(typeof adjustedWeeklyProjection==='function'?adjustedWeeklyProjection(p,week).adjusted:playerWeeklyValue(p)),0),assignments:roster.slice(0,9).map((p,i)=>({slot:{label:i?'START':'QB'},player:p,weekly:typeof adjustedWeeklyProjection==='function'?adjustedWeeklyProjection(p,week):null})),bench:[]};
+  }
+  function powerRows(week){
+    ensureLeagueData?.();
+    return(state.leagueTeams||[]).map(t=>({slot:t.slot,name:t.name,lineup:teamLineup(t.slot,week)})).sort((a,b)=>b.lineup.total-a.lineup.total);
+  }
+  function freeAgentIdeas(week){
+    if(typeof ownerSlotOf!=='function')return[];
+    const roster=typeof rosterForSlot==='function'?rosterForSlot(mySlot()):[];
+    const needs=typeof needPositions==='function'?needPositions(roster):[];
+    return(state.players||[]).filter(p=>!ownerSlotOf(p.id)&&!/OUT|IR|SUSP/i.test(String(p.status||''))).map(p=>{
+      const w=weekPlayer(p,week),pos=primaryPos(p);let score=Number(w.adjustedWeeklyProjection||0);
+      if(needs.includes(pos))score+=8;
+      const rank=num(p.rank,9999);if(rank!==null&&rank<120)score+=Math.max(0,(120-rank)/18);
+      return{p,w,score};
+    }).sort((a,b)=>b.score-a.score).slice(0,5);
+  }
+
+  function installShell(){
+    const leagueNav=document.querySelector('.nav-item[data-tab="league"]');
+    if(leagueNav){leagueNav.textContent='League Teams';leagueNav.insertAdjacentHTML('afterend','<button class="nav-item" data-tab="matchups">Weekly Matchups</button>')}
+    const leagueView=document.getElementById('view-league');
+    if(leagueView){
+      leagueView.querySelector('.league-page-head .eyebrow')?.replaceChildren(document.createTextNode('LEAGUE SETUP'));
+      const h=leagueView.querySelector('.league-page-head h1');if(h)h.textContent='League teams & draft order';
+      const p=leagueView.querySelector('.league-page-head .page-copy');if(p)p.textContent='Maintain Yahoo team names and draft slots here. Weekly matchup analysis now lives in its own Matchup Center.';
+      leagueView.querySelector('.league-matchup-surface')?.remove();
+    }
+    const anchor=document.getElementById('view-import')||document.getElementById('view-league')||document.getElementById('view-backup');
+    if(anchor&&!document.getElementById('view-matchups'))anchor.insertAdjacentHTML('beforebegin',`<section class="view matchup-center-view" id="view-matchups">
+      <div class="page-head compact-head matchup-center-head"><div><div class="eyebrow">WEEKLY COMMAND CENTER</div><h1>Matchups</h1><p class="page-copy">Review the imported league slate, identify the strongest teams, optimize your best legal lineup and get Week-specific AI trade and pickup suggestions.</p></div><label class="week-switcher">NFL WEEK<select id="matchup-center-week">${Array.from({length:18},(_,i)=>`<option value="${i+1}">Week ${i+1}</option>`).join('')}</select></label></div>
+      <div class="matchup-kpi-grid" id="matchup-kpis"></div>
+      <article class="surface mc-surface"><div class="surface-head no-pad"><div><span class="section-label">LEAGUE SLATE</span><h2 id="mc-slate-title">Week matchups</h2></div><div class="mc-actions"><button class="btn secondary small" id="mc-import">Import screenshot</button><button class="btn primary small" id="mc-analyze">Analyze my Week</button></div></div><div id="mc-slate"></div></article>
+      <div class="mc-two-col"><article class="surface mc-surface"><div class="surface-head no-pad"><div><span class="section-label">BEST LEGAL LINEUP</span><h2>My strongest team this week</h2></div><button class="btn secondary small" id="mc-optimize">Open lineup optimizer</button></div><div id="mc-lineup"></div></article><article class="surface mc-surface"><div class="surface-head no-pad"><div><span class="section-label">LEAGUE POWER VIEW</span><h2>Strongest teams</h2></div></div><div id="mc-power"></div></article></div>
+      <article class="surface mc-surface"><div class="surface-head no-pad"><div><span class="section-label">AVAILABLE PLAYERS</span><h2>Pickup suggestions</h2></div><button class="btn secondary small" id="mc-trades">Open Trade Center</button></div><div id="mc-pickups"></div></article>
+      <div id="mc-existing-intelligence"></div>
+      <article class="surface mc-surface mc-ai"><div class="surface-head no-pad"><div><span class="section-label">AI FANTASY GM</span><h2>Week-specific recommendations</h2></div><button class="btn primary small" id="mc-ai-run">Run AI analysis</button></div><div id="mc-ai-output" class="ai-note">Choose a week with a matchup, then run AI analysis for lineup, opponent, trades and pickups.</div></article>
+    </section>`);
+    moveExistingWeeklyPanels();
+    installStyles();
+  }
+
+  function moveExistingWeeklyPanels(){
+    const host=document.getElementById('mc-existing-intelligence');if(!host)return;
+    const nfl=document.getElementById('nfl-intelligence');if(nfl)host.appendChild(nfl);
+    const advice=document.getElementById('advice-engine')?.closest('.surface');if(advice)host.appendChild(advice);
+    const roster=document.getElementById('opponent-roster-editor')?.closest('.surface');if(roster)host.appendChild(roster);
+    const ai=document.getElementById('ai-weekly-output')?.closest('.ai-panel');if(ai)ai.style.display='none';
+  }
+  function installStyles(){if(document.getElementById('matchup-center-style'))return;const s=document.createElement('style');s.id='matchup-center-style';s.textContent=`
+    .matchup-center-view{max-width:1500px}.matchup-center-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px}.week-switcher{display:flex;flex-direction:column;gap:7px;font-size:9px;font-weight:900;letter-spacing:.1em;color:#8995aa}.week-switcher select{min-width:130px}.matchup-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 16px}.mc-kpi{border:1px solid #2a3548;border-radius:14px;background:linear-gradient(145deg,#111722,#0c1119);padding:16px}.mc-kpi span{font-size:9px;font-weight:900;letter-spacing:.09em;color:#8692a8}.mc-kpi strong{display:block;font-size:25px;margin:7px 0}.mc-kpi small{color:#7f8ba0}.mc-surface{padding:22px!important;margin-bottom:16px}.mc-actions{display:flex;gap:8px}.mc-slate-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:15px}.mc-match{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;border:1px solid #29364a;border-radius:12px;background:#0b1018;padding:14px}.mc-match.mine{border-color:#7651df;background:linear-gradient(135deg,#151126,#0c1118)}.mc-team:last-child{text-align:right}.mc-team strong{display:block}.mc-team small{display:block;color:#78869a;margin-top:4px}.mc-vs{font-size:9px;font-weight:900;color:#6f7b90}.mc-two-col{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.mc-lineup-row,.mc-power-row,.mc-pickup-row{display:grid;align-items:center;gap:10px;border-top:1px solid #263144;padding:9px 0}.mc-lineup-row{grid-template-columns:70px 1fr auto}.mc-lineup-row:first-child,.mc-power-row:first-child,.mc-pickup-row:first-child{border-top:0}.mc-lineup-row>span{font-size:9px;font-weight:900;color:#a88cff}.mc-lineup-row small,.mc-power-row small,.mc-pickup-row small{display:block;color:#7e8a9e;margin-top:3px}.mc-lineup-row>b{color:#85e8a5}.mc-power-row{grid-template-columns:30px 1fr auto}.mc-power-row.mine{color:#cdbaff}.mc-power-row .rank{font-weight:950;color:#79869a}.mc-power-row:first-child .rank{color:#a8ff45}.mc-power-row>strong{font-size:16px}.mc-pickups{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:12px}.mc-pickup-row{display:block;border:1px solid #293549!important;border-radius:11px;padding:12px;background:#0b1018}.mc-pickup-row b{display:block}.mc-pickup-row>strong{display:block;color:#85e8a5;margin-top:7px}.mc-ai{border-color:#3b315d!important}.mc-ai .ai-note{margin-top:14px}.mc-empty{padding:24px;border:1px dashed #334057;border-radius:12px;color:#8190a5;text-align:center;margin-top:12px}.mc-highlight{color:#a8ff45!important}@media(max-width:1100px){.matchup-kpi-grid{grid-template-columns:repeat(2,1fr)}.mc-two-col{grid-template-columns:1fr}.mc-pickups{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.matchup-center-head{align-items:stretch;flex-direction:column}.week-switcher select{width:100%}.matchup-kpi-grid,.mc-slate-grid,.mc-pickups{grid-template-columns:1fr}.mc-actions{width:100%;flex-direction:column}.mc-actions button{width:100%}.mc-match{grid-template-columns:1fr}.mc-team:last-child{text-align:left}.mc-vs{display:none}}
+  `;document.head.appendChild(s)}
+
+  function render(){
+    const view=document.getElementById('view-matchups');if(!view)return;
+    ensureData();ensureLeagueData?.();
+    const week=currentWeek();state.currentWeek=week;
+    const hidden=document.getElementById('matchup-week');if(hidden)hidden.value=String(week);
+    const opp=syncMyOpponent(week),rows=rowsForWeek(week),powers=powerRows(week),mine=powers.find(x=>x.slot===mySlot()),myRank=powers.findIndex(x=>x.slot===mySlot())+1;
+    const oppPower=powers.find(x=>x.slot===opp),sim=opp&&typeof simulateWeeklyMatchup==='function'?simulateWeeklyMatchup(week,10000):null;
+    const k=document.getElementById('matchup-kpis');if(k)k.innerHTML=`<div class="mc-kpi"><span>MY MATCHUP</span><strong>${opp?esc(leagueTeamName(opp)):'Not imported'}</strong><small>${opp?`Week ${week} opponent`:'Upload or set the Week '+week+' slate'}</small></div><div class="mc-kpi"><span>MY BEST LINEUP</span><strong>${mine?mine.lineup.total.toFixed(1):'—'}</strong><small>Adjusted Week ${week} projection</small></div><div class="mc-kpi"><span>LEAGUE POWER RANK</span><strong>${myRank?`#${myRank}`:'—'}</strong><small>${powers[0]?`Strongest: ${esc(powers[0].name)}`:'Roster data needed'}</small></div><div class="mc-kpi"><span>WIN PROBABILITY</span><strong>${sim?`${Math.round(sim.winProbability*100)}%`:'—'}</strong><small>${oppPower?`${mine?.lineup.total.toFixed(1)||'—'} vs ${oppPower.lineup.total.toFixed(1)}`:'Opponent roster needed'}</small></div>`;
+    const title=document.getElementById('mc-slate-title');if(title)title.textContent=`Week ${week} matchups`;
+    const slate=document.getElementById('mc-slate');if(slate)slate.innerHTML=rows.length?`<div class="mc-slate-grid">${rows.map(r=>{const a=powers.find(x=>x.slot===r.teamA),b=powers.find(x=>x.slot===r.teamB),isMine=r.teamA===mySlot()||r.teamB===mySlot();return`<div class="mc-match ${isMine?'mine':''}"><div class="mc-team"><strong>${esc(leagueTeamName(r.teamA))}</strong><small>${a?a.lineup.total.toFixed(1)+' projected':'Roster unavailable'}</small></div><span class="mc-vs">VS</span><div class="mc-team"><strong>${esc(leagueTeamName(r.teamB))}</strong><small>${b?b.lineup.total.toFixed(1)+' projected':'Roster unavailable'}</small></div></div>`}).join('')}</div>`:`<div class="mc-empty">No full Week ${week} matchup slate has been imported yet. Use Screenshot Import to add the Yahoo matchup screen.</div>`;
+    const lineup=document.getElementById('mc-lineup');if(lineup){const chosen=mine?.lineup?.assignments?.filter(x=>x.player)||[];lineup.innerHTML=chosen.length?chosen.map(x=>{const w=x.weekly||weekPlayer(x.player,week);const oppTxt=w.opponent||w.nflOpponent;return`<div class="mc-lineup-row"><span>${esc(x.slot.label||x.slot.type||'START')}</span><div><strong>${esc(x.player.name)}</strong><small>${esc(primaryPos(x.player))} · ${esc(x.player.team||'')}${oppTxt?` · ${w.home?'vs':'@'} ${esc(oppTxt)}`:''}${w.status?` · ${esc(w.status)}`:''}</small></div><b>${Number(w.adjusted??w.adjustedWeeklyProjection??0).toFixed(1)}</b></div>`}).join(''):'<div class="mc-empty">Add your current roster to calculate the strongest legal lineup.</div>'}
+    const power=document.getElementById('mc-power');if(power)power.innerHTML=powers.map((x,i)=>`<div class="mc-power-row ${x.slot===mySlot()?'mine':''}"><span class="rank">${i+1}</span><div><b>${esc(x.name)}</b><small>${x.slot===mySlot()?'MY TEAM':i===0?'STRONGEST PROJECTED TEAM':`Draft slot ${x.slot}`}</small></div><strong>${x.lineup.total.toFixed(1)}</strong></div>`).join('');
+    const pickups=freeAgentIdeas(week),pick=document.getElementById('mc-pickups');if(pick)pick.innerHTML=pickups.length?`<div class="mc-pickups">${pickups.map(x=>`<div class="mc-pickup-row"><b>${esc(x.p.name)}</b><small>${esc(primaryPos(x.p))} · ${esc(x.p.team||'')}${x.w.nflOpponent?` · ${x.w.home?'vs':'@'} ${esc(x.w.nflOpponent)}`:''}</small><strong>${Number(x.w.adjustedWeeklyProjection||0).toFixed(1)} wk pts</strong></div>`).join('')}</div>`:'<div class="mc-empty">No free-agent suggestions available until rosters and player ownership are populated.</div>';
+    if(typeof renderNflIntel==='function')renderNflIntel();if(typeof renderAdvice==='function')renderAdvice();if(typeof renderOpponentRosterEditor==='function')renderOpponentRosterEditor();
+  }
+
+  async function runAi(){
+    const out=document.getElementById('mc-ai-output'),week=currentWeek(),opp=syncMyOpponent(week);if(!out)return;
+    if(!opp){out.innerHTML=`<div class="ai-note">Import or select your Week ${week} opponent first.</div>`;return}
+    out.innerHTML=`<div class="ai-note">Analyzing Week ${week}: best legal lineup, NFL matchups, opponent roster, league power, trade targets and free agents…</div>`;
+    try{
+      if(typeof loadNflWeek==='function')await loadNflWeek(week);
+      const context=typeof aiWeeklyContext==='function'?aiWeeklyContext():null;if(!context)throw new Error('Weekly matchup context is incomplete');
+      const powers=powerRows(week),mine=powers.find(x=>x.slot===mySlot());
+      context.bestLegalLineup=mine?{projectedPoints:Number(mine.lineup.total.toFixed(2)),starters:(mine.lineup.assignments||[]).filter(x=>x.player).map(x=>({slot:x.slot.label,player:weekPlayer(x.player,week)}))}:null;
+      context.leaguePower=powers.map((x,i)=>({rank:i+1,slot:x.slot,team:x.name,bestLineupProjection:Number(x.lineup.total.toFixed(2))}));
+      context.freeAgentSuggestions=freeAgentIdeas(week).map(x=>({player:weekPlayer(x.p,week),score:Number(x.score.toFixed(2))}));
+      context.instruction='Give my highest-impact Week-specific actions first. Recommend the strongest legal lineup changes, then realistic pickup and trade opportunities. Compare my roster with this opponent and the strongest teams in the league. Use only supplied data; clearly flag missing information.';
+      const r=await fetch(typeof aiEndpoint==='function'?aiEndpoint():'/api/ai-advice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:'weekly',context})}),data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`AI service returned ${r.status}`);out.innerHTML=`<div class="ai-response">${esc(String(data.advice||'')).replaceAll('\n','<br>')}</div>`
+    }catch(e){out.innerHTML=`<div class="ai-note"><strong>AI analysis unavailable.</strong><br>${esc(e.message)}</div>`}
+  }
+  function openLineup(){state.currentWeek=currentWeek();saveState();switchTab('roster');setTimeout(()=>{const picker=document.getElementById('lineup-week');if(picker){picker.value=String(state.currentWeek);picker.dispatchEvent(new Event('change'))}document.getElementById('optimize-lineup')?.click()},60)}
+  function bind(){
+    document.querySelector('.nav-item[data-tab="matchups"]')?.addEventListener('click',()=>{switchTab('matchups');render()});
+    document.getElementById('matchup-center-week')?.addEventListener('change',e=>{state.currentWeek=clampWeek(e.target.value);saveState();render()});
+    document.getElementById('mc-analyze')?.addEventListener('click',runAi);document.getElementById('mc-ai-run')?.addEventListener('click',runAi);
+    document.getElementById('mc-optimize')?.addEventListener('click',openLineup);
+    document.getElementById('mc-import')?.addEventListener('click',()=>{switchTab('import');setTimeout(()=>document.getElementById('screenshot-file')?.click(),80)});
+    document.getElementById('mc-trades')?.addEventListener('click',()=>switchTab('trades'));
+  }
+  installShell();bind();
+  const picker=document.getElementById('matchup-center-week');if(picker)picker.value=String(clampWeek(state.currentWeek||1));
+  render();
+  window.renderMatchupCenter=render;
+})();
