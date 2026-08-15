@@ -21,8 +21,8 @@ function weeklyContextStatus(context){
   const playerRows=flattenPlayers(candidates).map(x=>x?.player||x).filter(Boolean);
   const providerAvailable=!!schedule?.projectionStatus?.available;
   const hasReal=providerAvailable||playerRows.some(p=>p?.realWeeklyProjection===true||/sleeper weekly projection|weekly projection/i.test(String(p?.projectionSource||'')));
-  const simulation=context?.simulation||context?.matchupSimulation||context?.fantasyOpponent?.simulation||null;
-  return{hasSchedule:games.length>0,gameCount:games.length,hasProjectionData:hasReal,projectionProvider:schedule?.projectionStatus?.provider||null,projectionCount:Number(schedule?.projectionStatus?.count)||0,hasSimulation:!!simulation,simulationUsesRealProjections:!!simulation&&hasReal};
+  const simulation=context?.simulation||context?.matchup?.simulation||context?.matchupSimulation||context?.fantasyOpponent?.simulation||null;
+  return{hasSchedule:games.length>0,gameCount:games.length,hasProjectionData:hasReal,projectionProvider:schedule?.projectionStatus?.provider||null,projectionCount:Number(schedule?.projectionStatus?.count)||0,hasSimulation:!!simulation,simulationRuns:Number(simulation?.runs)||0,simulationMethod:simulation?.method||null,simulationUsesRealProjections:!!simulation&&hasReal};
 }
 async function callResponses(input,maxOutputTokens,previousResponseId=null){
   const body={model:OPENAI_MODEL,instructions:SYSTEM,input,max_output_tokens:maxOutputTokens};
@@ -41,7 +41,7 @@ const aiAdvice=onRequest({secrets:[OPENAI_API_KEY],timeoutSeconds:90,memory:'256
   const serialized=JSON.stringify(context);
   if(serialized.length>220000)return res.status(413).json({error:'Analysis context too large'});
   try{
-    const prompt=`${taskPrompt(task)}${weeklyStatus?`\nWEEKLY DATA STATUS: ${JSON.stringify(weeklyStatus)}. If hasProjectionData is true, the supplied values include real week-specific provider projections and must not be described as season/17 estimates. If projection inputs are absent, state that clearly.`:''}\n\nLEAGUE DATA:\n${serialized}`;
+    const prompt=`${taskPrompt(task)}${weeklyStatus?`\nWEEKLY DATA STATUS: ${JSON.stringify(weeklyStatus)}. If hasProjectionData is true, the supplied values include real week-specific provider projections and must not be described as season/17 estimates. If hasSimulation is true, use the supplied simulation and its stated method; do not claim simulation metadata is unavailable when method/runs are present. If projection inputs are absent, state that clearly.`:''}\n\nLEAGUE DATA:\n${serialized}`;
     const first=await callResponses(prompt,6000);
     if(first.parseError)return res.status(502).json({error:'AI service returned an unreadable response'});
     const response=first.response,data=first.data;
