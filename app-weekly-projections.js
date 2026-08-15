@@ -3,6 +3,7 @@
 (function installRealWeeklyProjections(){
   const legacyAdjusted=typeof adjustedWeeklyProjection==='function'?adjustedWeeklyProjection:null;
   const legacyContext=typeof weeklyPlayerContext==='function'?weeklyPlayerContext:null;
+  const projectionIndexCache=new Map();
 
   const weekNumber=()=>Math.max(1,Math.min(18,Number(document.getElementById('lineup-week')?.value)||Number(document.getElementById('matchup-center-week')?.value)||Number(state.currentWeek)||1));
   const normName=v=>typeof canonicalName==='function'?canonicalName(v):String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -10,27 +11,35 @@
   const pos=p=>{const x=String(typeof primaryPos==='function'?primaryPos(p):p?.position||'').toUpperCase();return ['DST','DEF','D-ST'].includes(x)?'D/ST':x};
 
   function projectionRows(week){return state.nflWeeks?.[String(week)]?.projections||[]}
+  function projectionIndex(week){
+    const rows=projectionRows(week),key=String(week),cached=projectionIndexCache.get(key);
+    if(cached&&cached.rows===rows)return cached;
+    const byId=new Map(),byName=new Map(),byNameTeam=new Map(),byDefenseTeam=new Map();
+    for(const row of rows){
+      const id=String(row?.playerId||'');if(id)byId.set(id,row);
+      const name=normName(row?.name);if(name){if(!byName.has(name))byName.set(name,[]);byName.get(name).push(row);const team=normTeam(row?.team);if(team)byNameTeam.set(`${name}|${team}`,row)}
+      const position=String(row?.position||'').toUpperCase(),team=normTeam(row?.team||row?.playerId);if(team&&['D/ST','DST','DEF'].includes(position))byDefenseTeam.set(team,row);
+    }
+    const built={rows,byId,byName,byNameTeam,byDefenseTeam};projectionIndexCache.set(key,built);return built;
+  }
   function realProjectionFor(p,week){
-    const rows=projectionRows(week);if(!rows.length)return null;
-    const sid=String(p?.sleeperId||'');
-    if(sid){const exact=rows.find(x=>String(x.playerId||'')===sid);if(exact)return exact}
+    const idx=projectionIndex(week);if(!idx.rows.length)return null;
+    const sid=String(p?.sleeperId||'');if(sid&&idx.byId.has(sid))return idx.byId.get(sid);
     const team=normTeam(p?.team),name=normName(p?.name),position=pos(p);
-    if(position==='D/ST'&&team){const defense=rows.find(x=>normTeam(x.team||x.playerId)===team&&(['D/ST','DST','DEF'].includes(String(x.position||'').toUpperCase())||normTeam(x.playerId)===team));if(defense)return defense}
-    let matches=rows.filter(x=>normName(x.name)===name);
-    if(team){const same=matches.find(x=>normTeam(x.team)===team);if(same)return same}
-    return matches.length===1?matches[0]:null;
+    if(position==='D/ST'&&team&&idx.byDefenseTeam.has(team))return idx.byDefenseTeam.get(team);
+    if(name&&team&&idx.byNameTeam.has(`${name}|${team}`))return idx.byNameTeam.get(`${name}|${team}`);
+    const matches=name?(idx.byName.get(name)||[]):[];return matches.length===1?matches[0]:null;
   }
 
   function projectionQuality(week){
     const w=state.nflWeeks?.[String(week)]||{},ps=w.projectionStatus||{};
-    return{available:!!(ps.available&&projectionRows(week).length),provider:ps.provider||'',count:Number(ps.count)||projectionRows(week).length,scoring:ps.scoring||state.settings?.scoring||'half-ppr',fetchedAt:ps.fetchedAt||w.fetchedAt||''};
+    return{available:!!(ps.available&&projectionRows(week).length),provider:ps.provider||'',count:Number(ps.count)||projectionRows(week).length,scoring:ps.scoring||state.settings?.scoring||'half-ppr',fetchedAt:ps.fetchedAt||w.fetchedAt||'',matchedPlayers:Number(ps.matchedPlayers)||0};
   }
   window.weeklyProjectionQuality=projectionQuality;
 
-  // The original week-aware optimizer already prefers p.weeklyProjections[week]. Populate that
-  // field from the live provider so its private legal-lineup solver automatically uses real data.
   window.applyRealWeeklyProjections=function(payload,week){
     if(payload&&state.nflWeeks)state.nflWeeks[String(week)]=payload;
+    projectionIndexCache.delete(String(week));
     let matched=0;
     for(const p of state.players||[]){
       const hit=realProjectionFor(p,week);if(!hit||num(hit.points)===null)continue;
@@ -44,7 +53,6 @@
     return matched;
   };
 
-  // Apply any Week payload already cached before this script loaded.
   Object.entries(state.nflWeeks||{}).forEach(([week,payload])=>window.applyRealWeeklyProjections(payload,Number(week)));
 
   if(legacyAdjusted){
@@ -64,6 +72,7 @@
   function solve(players,week){
     const slots=typeof slotDefinitions==='function'?slotDefinitions():[];
     if(!players.length||!slots.length)return{week,total:0,assignments:[],bench:[...players],projectionQuality:projectionQuality(week)};
+    const values=players.map(p=>adjustedWeeklyProjection(p,week));
     const ordered=[...slots].sort((a,b)=>players.filter(p=>eligible(p,a.type)).length-players.filter(p=>eligible(p,b.type)).length),memo=new Map();
     function go(idx,mask){
       if(idx>=ordered.length)return{score:0,assignments:[]};
@@ -71,7 +80,7 @@
       const slot=ordered[idx],tail=go(idx+1,mask);let best={score:tail.score,assignments:[{slot,player:null,weekly:null},...tail.assignments]};
       for(let i=0;i<players.length;i++){
         const bit=1n<<BigInt(i);if((mask&bit)!==0n||!eligible(players[i],slot.type))continue;
-        const weekly=adjustedWeeklyProjection(players[i],week),next=go(idx+1,mask|bit),score=Number(weekly.adjusted||0)+.0001+next.score;
+        const weekly=values[i],next=go(idx+1,mask|bit),score=Number(weekly.adjusted||0)+.0001+next.score;
         if(score>best.score)best={score,assignments:[{slot,player:players[i],weekly},...next.assignments]};
       }
       memo.set(key,best);return best;
@@ -81,25 +90,32 @@
   }
   window.bestWeeklyLineup=solve;
 
-  // Fallback/global optimizer path. The week-aware script also intercepts this button and now
-  // sees p.weeklyProjections populated before its private solver runs.
   optimizeLineup=async function(){
     const week=weekNumber(),btn=document.getElementById('optimize-lineup');
     if(btn){btn.disabled=true;btn.dataset.oldText=btn.textContent;btn.textContent=`Loading Week ${week} projections…`}
     try{
       if(typeof loadNflWeek==='function')await loadNflWeek(week,false);
-      lineupResult=solve(typeof myRoster==='function'?myRoster():[],week);state.currentWeek=week;saveState();renderRoster();
+      lineupResult=solve(typeof myRoster==='function'?myRoster():[],week);state.currentWeek=week;saveState();renderRoster();renderQuality();
       const q=projectionQuality(week);if(typeof toast==='function')toast(q.available?`Week ${week} lineup optimized with ${q.provider||'weekly'} projections`:`Week ${week} projection feed unavailable — using fallback values`,q.available?undefined:'error');
     }finally{if(btn){btn.disabled=false;btn.textContent=btn.dataset.oldText||'Optimize lineup'}}
   };
 
   function renderQuality(){
-    const week=weekNumber(),q=projectionQuality(week);
+    const week=weekNumber(),q=projectionQuality(week),html=q.available?`<span class="quality-dot live"></span><strong>Real Week ${week} projections</strong><small>${q.provider} · ${q.matchedPlayers||q.count} matched · ${String(q.scoring).toUpperCase()}</small>`:`<span class="quality-dot fallback"></span><strong>Weekly projection fallback</strong><small>Provider data is not available yet; estimates are clearly marked as fallback.</small>`;
     document.querySelectorAll('#mc-lineup,#lineup-output').forEach(host=>{
-      if(!host)return;let badge=host.parentElement?.querySelector('.weekly-projection-quality');if(!badge){badge=document.createElement('div');badge.className='weekly-projection-quality';host.parentElement?.insertBefore(badge,host)}
-      if(badge)badge.innerHTML=q.available?`<span class="quality-dot live"></span><strong>Real Week ${week} projections</strong><small>${q.provider} · ${q.matchedPlayers||q.count} matched · ${String(q.scoring).toUpperCase()}</small>`:`<span class="quality-dot fallback"></span><strong>Weekly projection fallback</strong><small>Provider data is not available yet; estimates are clearly marked as fallback.</small>`;
+      if(!host)return;let badge=host.parentElement?.querySelector(':scope > .weekly-projection-quality');
+      if(!badge){badge=document.createElement('div');badge.className='weekly-projection-quality';host.parentElement?.insertBefore(badge,host)}
+      if(badge&&badge.innerHTML!==html)badge.innerHTML=html;
     });
   }
+  window.renderWeeklyProjectionQuality=renderQuality;
   const style=document.createElement('style');style.textContent='.weekly-projection-quality{display:flex;align-items:center;gap:8px;margin:10px 0 12px;padding:9px 11px;border:1px solid #29352b;border-radius:10px;background:#09100b;color:#dce5d9;font-size:11px}.weekly-projection-quality strong{margin-right:4px}.weekly-projection-quality small{color:#7f8c80}.quality-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}.quality-dot.live{background:#a8ff45;box-shadow:0 0 10px rgba(168,255,69,.45)}.quality-dot.fallback{background:#d5a84a}';document.head.appendChild(style);
-  const observer=new MutationObserver(()=>{if(document.getElementById('view-matchups')?.classList.contains('active')||document.getElementById('view-roster')?.classList.contains('active'))renderQuality()});observer.observe(document.body,{subtree:true,childList:true});
+
+  // Do not watch the entire DOM. The previous MutationObserver rewrote the badge in response to
+  // its own DOM mutation and could create a render feedback loop that froze Weekly Matchups.
+  const baseMatchupRender=window.renderMatchupCenter;
+  if(typeof baseMatchupRender==='function')window.renderMatchupCenter=function(){const result=baseMatchupRender.apply(this,arguments);renderQuality();return result};
+  const baseRosterRender=typeof renderRoster==='function'?renderRoster:null;
+  if(baseRosterRender)renderRoster=function(){const result=baseRosterRender.apply(this,arguments);renderQuality();return result};
+  setTimeout(renderQuality,0);
 })();
