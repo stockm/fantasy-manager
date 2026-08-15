@@ -29,6 +29,7 @@ function bindForms() {
 async function resetDraftData() {
   if (!confirm('Delete all draft picks and drafted rosters and restart the draft from Pick 1?\n\nLeague settings, team names, player rankings and league configuration will be kept.')) return;
   state.picks=[]; state.manualRosterIds=[]; state.teamRosters={}; state.tradeTargets=[]; lineupResult=null;
+  if(Array.isArray(state.players))state.players=state.players.filter(p=>!p.autoTestGenerated);
   if(state.matchups&&typeof state.matchups==='object')state.matchups={};
   if(state.weeklyMatchups&&typeof state.weeklyMatchups==='object')state.weeklyMatchups={};
   if(Array.isArray(state.leagueTeams))state.leagueTeams.forEach(team=>{if(Array.isArray(team.rosterIds))team.rosterIds=[];if(Array.isArray(team.players))team.players=[];if(Array.isArray(team.roster))team.roster=[]});
