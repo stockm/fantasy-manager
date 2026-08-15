@@ -94,3 +94,5 @@ exports.nflWeek=onRequest({timeoutSeconds:30,memory:'256MiB'},async(req,res)=>{
     return res.status(502).json({error:'NFL schedule temporarily unavailable'})
   }
 });
+
+exports.screenshotImport=require('./screenshot-import').screenshotImport;
