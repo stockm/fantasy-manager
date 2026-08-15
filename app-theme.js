@@ -2,7 +2,7 @@
 (function installAppTheme(){
   const css=document.createElement('link');css.rel='stylesheet';css.href='app-theme.css';document.head.appendChild(css);
 
-  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
   function inline(text){
     let s=escapeHtml(text);
     s=s.replace(/`([^`]+)`/g,'<code>$1</code>');
@@ -12,9 +12,17 @@
     return s;
   }
   function isDivider(line){return /^\s*\|?\s*:?-{3,}/.test(line)&&line.includes('-')}
-  function tableCells(line){return line.trim().replace(/^\||\|$/g,'').split('|').map(x=>x.trim())}
+  function tableCells(line){return line.trim().replace(/^\||\|$/g,'').split('|').map(x=>x.trim()).filter((x,i,a)=>x||i<a.length-1)}
+  function normalizeMarkdown(raw){
+    return String(raw||'')
+      .replace(/\r/g,'')
+      .replace(/([^\n])(?=#{2,4}\s)/g,'$1\n\n')
+      .replace(/([^\n])(?=---(?:\n|$))/g,'$1\n')
+      .replace(/\n{3,}/g,'\n\n')
+      .trim();
+  }
   function formatAiMarkdown(raw){
-    const lines=String(raw||'').replace(/\r/g,'').split('\n');
+    const lines=normalizeMarkdown(raw).split('\n');
     const out=[];let i=0;
     while(i<lines.length){
       const line=lines[i].trim();
@@ -35,19 +43,34 @@
         const items=[];while(i<lines.length&&/^\s*\d+[.)]\s+/.test(lines[i])){items.push(lines[i].replace(/^\s*\d+[.)]\s+/,''));i++}
         out.push(`<ol>${items.map(x=>`<li>${inline(x)}</li>`).join('')}</ol>`);continue;
       }
-      const action=/^(recommendation|highest-impact|priority|best move|action|bottom line|trade|pickup|start|sit)\b/i.test(line.replace(/[*#:]/g,'').trim());
+      const action=/^(recommendation|highest-impact|priority|best move|action|bottom line|trade|pickup|start|sit|important)\b/i.test(line.replace(/[*#:]/g,'').trim());
       const paragraph=[];
-      while(i<lines.length){const x=lines[i].trim();if(!x){i++;break}if(paragraph.length&&(x.startsWith('#')||/^[-*]\s+/.test(x)||/^\d+[.)]\s+/.test(x)||(x.startsWith('|')&&i+1<lines.length&&isDivider(lines[i+1]))))break;paragraph.push(x);i++}
-      const html=paragraph.map(inline).join('<br>');out.push(action?`<div class="ai-action">${html}</div>`:`<p>${html}</p>`);
+      while(i<lines.length){
+        const x=lines[i].trim();
+        if(!x){i++;break}
+        if(paragraph.length&&(x.startsWith('#')||/^[-*]\s+/.test(x)||/^\d+[.)]\s+/.test(x)||(x.startsWith('|')&&i+1<lines.length&&isDivider(lines[i+1]))||/^[-*_]{3,}$/.test(x)))break;
+        paragraph.push(x);i++;
+      }
+      const html=paragraph.map(inline).join(' ');out.push(action?`<div class="ai-action">${html}</div>`:`<p>${html}</p>`);
     }
     return out.join('');
   }
   window.formatAiMarkdown=formatAiMarkdown;
 
+  function sourceText(el){
+    if(el.dataset.aiRaw)return el.dataset.aiRaw;
+    const clone=el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));
+    clone.querySelectorAll('p,div,h1,h2,h3,h4,li,tr').forEach(node=>{
+      if(node!==clone)node.appendChild(document.createTextNode('\n'));
+    });
+    return clone.textContent||'';
+  }
   function formatNode(el){
     if(!(el instanceof HTMLElement)||el.dataset.aiFormatted==='1')return;
-    const raw=el.textContent||'';
+    const raw=sourceText(el);
     if(!raw.trim())return;
+    el.dataset.aiRaw=raw;
     el.innerHTML=formatAiMarkdown(raw);el.classList.add('ai-formatted');el.dataset.aiFormatted='1';
   }
   function scan(root=document){root.querySelectorAll?.('.ai-response').forEach(formatNode)}
