@@ -19,6 +19,7 @@
     else if(tab==='draft'&&typeof renderDraft==='function')renderDraft();
     else if(tab==='roster'&&typeof renderRoster==='function')renderRoster();
     else if(tab==='league'&&typeof renderLeagueTeams==='function')renderLeagueTeams();
+    else if(tab==='matchups'&&typeof window.renderMatchupCenter==='function')window.renderMatchupCenter();
     else if(tab==='trades'&&typeof window.renderTradeCenter==='function')window.renderTradeCenter();
     else if(tab==='import'&&typeof window.renderScreenshotImport==='function')window.renderScreenshotImport();
     if(typeof renderFeedStatus==='function')renderFeedStatus();
@@ -31,6 +32,7 @@
     baseSwitchTab(tab);
     if(tab==='dashboard'&&typeof renderDashboard==='function')renderDashboard();
     if(tab==='league'&&typeof renderLeagueTeams==='function')renderLeagueTeams();
+    if(tab==='matchups'&&typeof window.renderMatchupCenter==='function')window.renderMatchupCenter();
     if(tab==='trades'&&typeof window.renderTradeCenter==='function')window.renderTradeCenter();
     if(tab==='import'&&typeof window.renderScreenshotImport==='function')window.renderScreenshotImport();
     if(typeof renderFeedStatus==='function')renderFeedStatus();
@@ -66,6 +68,6 @@
 
   window.fmPerf={
     activeTab,
-    note:'Large player, draft and trade views render only when opened; silent live-data refresh waits for Firestore.'
+    note:'Large player, draft, matchup and trade views render only when opened; silent live-data refresh waits for Firestore.'
   };
 })();
