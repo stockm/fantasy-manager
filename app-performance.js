@@ -20,6 +20,7 @@
     else if(tab==='roster'&&typeof renderRoster==='function')renderRoster();
     else if(tab==='league'&&typeof renderLeagueTeams==='function')renderLeagueTeams();
     else if(tab==='trades'&&typeof window.renderTradeCenter==='function')window.renderTradeCenter();
+    else if(tab==='import'&&typeof window.renderScreenshotImport==='function')window.renderScreenshotImport();
     if(typeof renderFeedStatus==='function')renderFeedStatus();
   };
 
@@ -31,6 +32,7 @@
     if(tab==='dashboard'&&typeof renderDashboard==='function')renderDashboard();
     if(tab==='league'&&typeof renderLeagueTeams==='function')renderLeagueTeams();
     if(tab==='trades'&&typeof window.renderTradeCenter==='function')window.renderTradeCenter();
+    if(tab==='import'&&typeof window.renderScreenshotImport==='function')window.renderScreenshotImport();
     if(typeof renderFeedStatus==='function')renderFeedStatus();
   };
 
