@@ -1,0 +1,21 @@
+/* Completed Draft Room layout */
+.post-draft-surface{padding:24px!important;overflow:hidden}
+.post-draft-surface #draft-recommendations,.post-draft-surface .draft-recs{display:block!important;grid-template-columns:none!important}
+.post-draft-surface .ai-panel{display:none!important}
+.post-draft-overview{display:grid!important;grid-template-columns:1.35fr .8fr .8fr!important;gap:14px!important;margin:4px 0 18px!important}
+.post-draft-stat{min-width:0!important;padding:18px!important;border-radius:14px!important;background:linear-gradient(145deg,#0b110c,#080c09)!important;border:1px solid #263428!important}
+.post-draft-stat span{font-size:9px!important;letter-spacing:.14em!important;color:#829084!important}
+.post-draft-stat strong{font-size:24px!important;line-height:1.12!important;margin:8px 0 5px!important;overflow-wrap:anywhere}
+.post-draft-stat small{font-size:12px!important;line-height:1.45!important;color:#8f9a90!important}
+.post-draft-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important;margin-top:0!important}
+.post-draft-action{min-width:0!important;min-height:126px!important;display:flex!important;align-items:flex-start!important;gap:13px!important;padding:18px!important;border-radius:14px!important;position:relative!important}
+.post-draft-action>div{min-width:0!important;flex:1!important}
+.post-draft-action strong{font-size:16px!important;line-height:1.25!important;white-space:normal!important;overflow-wrap:normal!important;word-break:normal!important}
+.post-draft-action small{font-size:12px!important;line-height:1.45!important;margin-top:7px!important;white-space:normal!important;color:#8d998f!important}
+.post-draft-action>b{position:absolute!important;right:16px!important;bottom:14px!important}
+.post-draft-icon{flex:0 0 34px!important;width:34px!important;height:34px!important}
+.post-draft-note{display:block!important;width:100%!important;box-sizing:border-box!important;margin-top:16px!important;padding:14px 16px!important;font-size:12px!important;line-height:1.55!important}
+#view-draft .post-draft-surface .surface-head{margin-bottom:18px!important}
+#view-draft .post-draft-surface .surface-head h2{font-size:22px!important}
+@media(max-width:1180px){.post-draft-overview{grid-template-columns:1fr 1fr 1fr!important}.post-draft-actions{grid-template-columns:1fr!important}.post-draft-action{min-height:96px!important}}
+@media(max-width:760px){.post-draft-overview{grid-template-columns:1fr!important}.post-draft-surface{padding:18px!important}.post-draft-stat strong{font-size:21px!important}}
