@@ -2,7 +2,7 @@
 (function installAppTheme(){
   const css=document.createElement('link');css.rel='stylesheet';css.href='app-theme.css';document.head.appendChild(css);
 
-  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
+  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   function inline(text){
     let s=escapeHtml(text);
     s=s.replace(/`([^`]+)`/g,'<code>$1</code>');
