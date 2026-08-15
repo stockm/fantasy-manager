@@ -53,10 +53,11 @@
   function scan(root=document){root.querySelectorAll?.('.ai-response').forEach(formatNode)}
   scan();
   const observer=new MutationObserver(mutations=>{
-    for(const m of mutations){
-      if(m.target instanceof HTMLElement&&m.target.matches('.ai-response')){m.target.dataset.aiFormatted='0';formatNode(m.target)}
-      m.addedNodes.forEach(node=>{if(!(node instanceof HTMLElement))return;if(node.matches('.ai-response'))formatNode(node);scan(node)})
-    }
+    for(const m of mutations)m.addedNodes.forEach(node=>{
+      if(!(node instanceof HTMLElement))return;
+      if(node.matches('.ai-response'))formatNode(node);
+      scan(node);
+    });
   });
   observer.observe(document.body,{childList:true,subtree:true});
 })();
