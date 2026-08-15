@@ -49,7 +49,7 @@ function bindControls() {
   ['draft-search','draft-pos-filter'].forEach(id=>document.getElementById(id).addEventListener(id.includes('search')?'input':'change',renderDraft));
   document.getElementById('undo-pick').addEventListener('click',undoPick);
   document.getElementById('jump-my-pick').addEventListener('click',()=>document.querySelector('.recommendation-surface')?.scrollIntoView({behavior:'smooth',block:'start'}));
-  document.getElementById('optimize-lineup').addEventListener('click',optimizeLineup);
+  document.getElementById('optimize-lineup').addEventListener('click',()=>optimizeLineup());
   document.getElementById('refresh-live-data').addEventListener('click',refreshLiveData);
   document.getElementById('refresh-rankings-only').addEventListener('click',()=>refreshRankings());
   document.getElementById('download-template').addEventListener('click',()=>download('fantasy-player-template.csv','name,team,position,rank,adp,projection,bye,tier,status\n','text/csv'));
