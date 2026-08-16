@@ -5,6 +5,8 @@
 // AI reviews the selected starters and close calls using the exact same context.
 (function installWeeklyLineupIntelligence(){
   let lineupBusy=false;
+  let autoLineupPending=false;
+  let autoLineupAttemptKey='';
 
   const posKey=p=>{
     const x=String(primaryPos(p)||'').toUpperCase();
@@ -15,6 +17,37 @@
     const picker=Number(document.getElementById('lineup-week')?.value);
     const matchup=Number(document.getElementById('matchup-week')?.value);
     return Math.max(1,Math.min(18,picker||Number(state.currentWeek)||matchup||1));
+  };
+  const rosterKey=players=>players.map(p=>String(p.id||canonicalName(p.name)||p.name||'')).sort().join('|');
+  const projectionKey=week=>{
+    const quality=typeof weeklyProjectionQuality==='function'?weeklyProjectionQuality(week):null;
+    const payload=state.nflWeeks?.[String(week)]||{};
+    const status=quality||payload.projectionStatus||{};
+    const scoring=status.scoring||(typeof weeklyScoringKey==='function'?weeklyScoringKey():state.settings?.scoring)||'';
+    return [
+      status.available?'live':'fallback',
+      status.provider||'',
+      status.fetchedAt||payload.fetchedAt||'not-fetched',
+      status.matchedPlayers||status.count||0,
+      scoring
+    ].join('|');
+  };
+  const tagLineupResult=(result,week,players,source)=>{
+    result.rosterKey=rosterKey(players);
+    result.projectionKey=projectionKey(week);
+    result.generatedBy=source;
+    result.generatedAt=new Date().toISOString();
+    return result;
+  };
+  const lineupIsCurrent=(week,players)=>!!(
+    lineupResult?.week===week&&
+    Array.isArray(lineupResult.assignments)&&
+    lineupResult.rosterKey===rosterKey(players)&&
+    lineupResult.projectionKey===projectionKey(week)
+  );
+  const rosterViewActive=()=>{
+    const view=document.getElementById('view-roster');
+    return !view||view.classList.contains('active');
   };
 
   function explicitWeeklyProjection(p,week){
@@ -205,13 +238,18 @@
     if(!btn||document.getElementById('lineup-week'))return;
     const wrap=document.createElement('div');wrap.className='lineup-week-actions';
     const current=Math.max(1,Math.min(18,Number(state.currentWeek)||Number(document.getElementById('matchup-week')?.value)||1));
-    wrap.innerHTML=`<label class="lineup-week-label">NFL week <select id="lineup-week">${Array.from({length:18},(_,i)=>`<option value="${i+1}" ${i+1===current?'selected':''}>Week ${i+1}</option>`).join('')}</select></label>`;
+    wrap.innerHTML=`<label class="lineup-week-label">NFL week <select id="lineup-week">${Array.from({length:18},(_,i)=>`<option value="${i+1}" ${i+1===current?'selected':''}>Week ${i+1}</option>`).join('')}</select></label><button class="btn secondary small" type="button" id="refresh-lineup-week">Refresh Week data</button>`;
     btn.parentNode.insertBefore(wrap,btn);wrap.appendChild(btn);
     document.getElementById('lineup-week')?.addEventListener('change',e=>{
       state.currentWeek=Number(e.target.value)||1;
       const other=document.getElementById('matchup-week');if(other)other.value=String(state.currentWeek);
       if(lineupResult?.week!==state.currentWeek)lineupResult=null;
+      autoLineupAttemptKey='';
       saveState();renderRoster();
+    });
+    document.getElementById('refresh-lineup-week')?.addEventListener('click',e=>{
+      e.preventDefault();
+      calculateWeeklyLineup({force:true,runAi:false,silent:false,source:'refresh'});
     });
   }
 
@@ -234,7 +272,7 @@
   }
 
   const baseRenderRoster=renderRoster;
-  renderRoster=function(){baseRenderRoster();renderWeeklyResult();ensureAiBox()};
+  renderRoster=function(){baseRenderRoster();renderWeeklyResult();ensureAiBox();scheduleAutoLineup()};
 
   function lineupAiContext(week,result){
     const roster=myRoster(),oppSlot=Number(state.matchups?.[String(week)]||0);
@@ -273,27 +311,53 @@
     }
   }
 
-  async function optimizeForSelectedWeek(e){
-    e?.preventDefault?.();e?.stopImmediatePropagation?.();
-    if(lineupBusy)return;
-    const week=selectedWeek(),roster=myRoster(),slots=slotDefinitions(),btn=document.getElementById('optimize-lineup');
+  async function calculateWeeklyLineup({force=false,runAi=false,silent=false,source='manual'}={}){
+    if(lineupBusy)return false;
+    const week=selectedWeek(),slots=slotDefinitions(),btn=document.getElementById('optimize-lineup'),refresh=document.getElementById('refresh-lineup-week');
+    let roster=myRoster();
     state.currentWeek=week;saveState();
     if(!roster.length||!slots.length){lineupResult={week,total:0,assignments:[],bench:[...roster]};renderRoster();return}
     lineupBusy=true;
-    if(btn){btn.disabled=true;btn.dataset.originalText=btn.textContent;btn.textContent=`Loading Week ${week}…`}
-    const box=ensureAiBox();if(box)box.innerHTML=`<div class="ai-note">Loading the Week ${week} NFL schedule and matchup context…</div>`;
+    if(btn){btn.disabled=true;btn.dataset.originalText=btn.dataset.originalText||btn.textContent;btn.textContent=runAi?`Optimizing Week ${week}…`:`Loading Week ${week}…`}
+    if(refresh){refresh.disabled=true;refresh.dataset.originalText=refresh.dataset.originalText||refresh.textContent;refresh.textContent=force?'Refreshing…':'Loading…'}
+    const box=ensureAiBox();if(box&&!silent)box.innerHTML=`<div class="ai-note">Loading the Week ${week} NFL schedule and matchup context…</div>`;
     try{
-      if(typeof loadNflWeek==='function')await loadNflWeek(week,false);
-      lineupResult=solveLegalLineup(roster,week);
+      if(typeof loadNflWeek==='function')await loadNflWeek(week,force);
+      roster=myRoster();
+      lineupResult=tagLineupResult(solveLegalLineup(roster,week),week,roster,source);
       renderRoster();
-      toast(`Week ${week} legal lineup optimized using NFL matchup context`);
-      await requestLineupAi(week,lineupResult);
+      if(!silent&&typeof toast==='function')toast(force?`Week ${week} data refreshed and lineup recalculated`:`Week ${week} legal lineup optimized using NFL matchup context`);
+      if(runAi)await requestLineupAi(week,lineupResult);
+      else if(!silent&&box)box.innerHTML=`<div class="ai-note">Week ${week} lineup recalculated from the latest available projection cache. Use Optimize Week ${week} for an AI review.</div>`;
       if(typeof renderNflIntel==='function')renderNflIntel();
+      return true;
     }finally{
       lineupBusy=false;
       const live=document.getElementById('optimize-lineup');
+      const liveRefresh=document.getElementById('refresh-lineup-week');
       if(live){live.disabled=false;live.textContent=`Optimize Week ${week}`}
+      if(liveRefresh){liveRefresh.disabled=false;liveRefresh.textContent=liveRefresh.dataset.originalText||'Refresh Week data'}
     }
+  }
+
+  function scheduleAutoLineup(){
+    if(!rosterViewActive()||lineupBusy||autoLineupPending)return;
+    if(typeof weeklyProjectionQuality!=='function')return setTimeout(scheduleAutoLineup,60);
+    const week=selectedWeek(),roster=myRoster(),slots=slotDefinitions();
+    if(!roster.length||!slots.length||lineupIsCurrent(week,roster))return;
+    const attemptKey=`${week}|${rosterKey(roster)}|${projectionKey(week)}`;
+    if(autoLineupAttemptKey===attemptKey)return;
+    autoLineupAttemptKey=attemptKey;
+    autoLineupPending=true;
+    setTimeout(async()=>{
+      try{await calculateWeeklyLineup({force:false,runAi:false,silent:true,source:'auto'})}
+      finally{autoLineupPending=false}
+    },0);
+  }
+
+  async function optimizeForSelectedWeek(e){
+    e?.preventDefault?.();e?.stopImmediatePropagation?.();
+    await calculateWeeklyLineup({force:false,runAi:true,silent:false,source:'manual'});
   }
 
   const btn=document.getElementById('optimize-lineup');
@@ -304,6 +368,7 @@
     .lineup-week-actions{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
     .lineup-week-label{display:grid;gap:5px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#8f98aa)}
     .lineup-week-label select{min-width:110px}
+    #refresh-lineup-week{min-height:39px}
     .lineup-row.weekly .player-meta{margin-top:3px}.lineup-factor{margin-top:3px;font-size:10px;color:var(--muted,#8f98aa)}
     .lineup-points small{display:block;font-size:9px;opacity:.65}.lineup-ai-review{margin-top:14px}
     .lineup-ai-head{margin-bottom:8px}
