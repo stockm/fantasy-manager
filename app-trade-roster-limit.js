@@ -50,7 +50,27 @@
     if(typeof window.renderMatchupCenter==='function')window.renderMatchupCenter();
     toast(message);
   }
-  function closeModal(){document.getElementById('trade-roster-limit-modal')?.remove()}
+  function closeModal(){document.getElementById('trade-roster-limit-modal')?.remove();document.getElementById('trade-recommendation-modal')?.remove()}
+  function showRecommendationConfirm({addPlayer,dropPlayer=null,teamName,onConfirm}){
+    closeModal();
+    const overlay=document.createElement('div');
+    overlay.id='trade-recommendation-modal';
+    overlay.className='trade-limit-overlay';
+    overlay.innerHTML=`<div class="trade-limit-modal trade-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="trade-confirm-title">
+      <div class="trade-limit-head"><div><span>CONFIRM MOVE</span><h3 id="trade-confirm-title">Apply recommendation?</h3></div><button class="trade-limit-close" type="button" aria-label="Close">×</button></div>
+      <div class="trade-confirm-summary">
+        <div><span>Add</span><strong>${esc(addPlayer.name)}</strong><small>${esc(primaryPos(addPlayer))} · ${esc(addPlayer.team||'')} → ${esc(teamName)}</small></div>
+        ${dropPlayer?`<div><span>Drop</span><strong>${esc(dropPlayer.name)}</strong><small>${esc(primaryPos(dropPlayer))} · ${esc(dropPlayer.team||'')} from ${esc(teamName)}</small></div>`:''}
+      </div>
+      <p>This updates Fantasy Manager's maintained roster. Make the matching transaction in Yahoo if you want your live league roster to match.</p>
+      <div class="trade-limit-foot"><span>Roster move preview</span><div><button class="btn secondary" type="button" data-limit-cancel>Cancel</button><button class="btn primary" type="button" data-limit-confirm>${dropPlayer?'Apply add/drop':'Add player'}</button></div></div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('.trade-limit-close').onclick=closeModal;
+    overlay.querySelector('[data-limit-cancel]').onclick=closeModal;
+    overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal()});
+    overlay.querySelector('[data-limit-confirm]').onclick=()=>{closeModal();onConfirm?.()};
+  }
   function showReplacementPicker(slot,newPlayer,requiredRemovals){
     closeModal();
     const current=rosterIds(slot).map(getPlayer).filter(Boolean);
@@ -88,10 +108,10 @@
   function installStyles(){
     if(document.getElementById('trade-roster-limit-style'))return;
     const s=document.createElement('style');s.id='trade-roster-limit-style';s.textContent=`
-      .trade-limit-overlay{position:fixed;inset:0;z-index:12000;background:rgba(3,6,12,.78);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}
-      .trade-limit-modal{width:min(620px,100%);max-height:min(760px,88vh);display:flex;flex-direction:column;background:#0d131d;border:1px solid #334057;border-radius:18px;box-shadow:0 28px 80px rgba(0,0,0,.55);padding:20px;color:#eef2f8}
-      .trade-limit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.trade-limit-head span{font-size:10px;font-weight:900;letter-spacing:.1em;color:#a88cff}.trade-limit-head h3{font-size:22px;margin:4px 0 0}.trade-limit-close{border:0;background:transparent;color:#9ba7ba;font-size:28px;cursor:pointer}
-      .trade-limit-modal>p{color:#9ba7b9;line-height:1.55;font-size:13px}.trade-limit-list{overflow:auto;border:1px solid #283448;border-radius:12px;background:#090e15;margin:6px 0 16px}.trade-limit-list label{display:grid;grid-template-columns:auto 1fr;gap:11px;align-items:center;padding:11px 12px;border-bottom:1px solid #202a39;cursor:pointer}.trade-limit-list label:last-child{border-bottom:0}.trade-limit-list input{margin:0}.trade-limit-list strong{display:block;font-size:13px}.trade-limit-list small{display:block;color:#75839a;margin-top:2px}.trade-limit-foot{display:flex;align-items:center;justify-content:space-between;gap:12px}.trade-limit-foot>span{font-size:11px;color:#8d9aaf}.trade-limit-foot>div{display:flex;gap:8px}
+      .trade-limit-overlay{position:fixed;inset:0;z-index:12000;background:rgba(2,6,4,.76);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)}
+      .trade-limit-modal{width:min(620px,100%);max-height:min(760px,88vh);display:flex;flex-direction:column;background:linear-gradient(145deg,#0d120e,#090c0a);border:1px solid #304134;border-radius:18px;box-shadow:0 28px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.025);padding:22px;color:#f7f8f4}
+      .trade-confirm-modal{width:min(540px,100%)}.trade-limit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid #243027}.trade-limit-head span{font-size:10px;font-weight:950;letter-spacing:.12em;color:#a8ff45}.trade-limit-head h3{font-size:24px;margin:4px 0 0;letter-spacing:0}.trade-limit-close{display:grid;place-items:center;width:36px;height:36px;border:1px solid #2a362d;border-radius:999px;background:#101511;color:#9aa59a;font-size:24px;line-height:1;cursor:pointer}.trade-limit-close:hover{border-color:#58734b;color:#a8ff45}
+      .trade-limit-modal>p{color:#9ea89e;line-height:1.55;font-size:13px}.trade-limit-list{overflow:auto;border:1px solid #27342b;border-radius:12px;background:#080b09;margin:6px 0 16px}.trade-limit-list label{display:grid;grid-template-columns:auto 1fr;gap:11px;align-items:center;padding:11px 12px;border-bottom:1px solid #1e2921;cursor:pointer}.trade-limit-list label:hover{background:#101811}.trade-limit-list label:last-child{border-bottom:0}.trade-limit-list input{margin:0;accent-color:#a8ff45}.trade-limit-list strong{display:block;font-size:13px}.trade-limit-list small{display:block;color:#7f8a7f;margin-top:2px}.trade-confirm-summary{display:grid;gap:10px;margin:16px 0}.trade-confirm-summary>div{border:1px solid #27342b;border-radius:13px;background:#080b09;padding:13px 14px}.trade-confirm-summary span{display:block;margin-bottom:5px;font-size:9px;font-weight:950;letter-spacing:.11em;text-transform:uppercase;color:#a8ff45}.trade-confirm-summary strong{display:block;font-size:17px}.trade-confirm-summary small{display:block;margin-top:4px;color:#899489}.trade-limit-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}.trade-limit-foot>span{font-size:11px;color:#8d998d}.trade-limit-foot>div{display:flex;gap:8px}
       @media(max-width:620px){.trade-limit-foot{align-items:stretch;flex-direction:column}.trade-limit-foot>div{display:grid;grid-template-columns:1fr 1fr}.trade-limit-modal{padding:16px}}
     `;document.head.appendChild(s);
   }
@@ -127,18 +147,20 @@
     const limit=rosterLimit();
     if(limit<=0)return toast('This league has no configured active roster spots','error'),false;
     if(dropPlayer){
-      if(!confirm(`Apply this recommendation?\n\nAdd ${addPlayer.name} to ${teamName}\nDrop ${dropPlayer.name}`))return false;
-      movePlayer(dropPlayer.id,null);
-      movePlayer(addPlayer.id,targetSlot);
-      refreshAfterMove(`${addPlayer.name} added; ${dropPlayer.name} removed`);
-      return true;
+      showRecommendationConfirm({addPlayer,dropPlayer,teamName,onConfirm:()=>{
+        movePlayer(dropPlayer.id,null);
+        movePlayer(addPlayer.id,targetSlot);
+        refreshAfterMove(`${addPlayer.name} added; ${dropPlayer.name} removed`);
+      }});
+      return false;
     }
     const requiredRemovals=Math.max(0,current.length+1-limit);
     if(requiredRemovals>0){showReplacementPicker(targetSlot,addPlayer,requiredRemovals);return false}
-    if(!confirm(`Add ${addPlayer.name} to ${teamName}?`))return false;
-    movePlayer(addPlayer.id,targetSlot);
-    refreshAfterMove(`${addPlayer.name} added to ${teamName} (${current.length+1}/${limit})`);
-    return true;
+    showRecommendationConfirm({addPlayer,teamName,onConfirm:()=>{
+      movePlayer(addPlayer.id,targetSlot);
+      refreshAfterMove(`${addPlayer.name} added to ${teamName} (${current.length+1}/${limit})`);
+    }});
+    return false;
   }
   installStyles();
   document.addEventListener('click',handleAddClick,true);
