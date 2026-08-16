@@ -13,6 +13,7 @@
     const s=document.createElement('style');s.id='matchup-loading-style';s.textContent=`
       #view-matchups{position:relative}
       .matchup-loading-overlay{position:absolute;inset:0;z-index:50;min-height:560px;display:flex;align-items:flex-start;justify-content:center;padding:120px 24px;background:rgba(5,7,6,.93);backdrop-filter:blur(3px);border-radius:16px}
+      .matchup-loading-overlay[hidden]{display:none!important}
       .matchup-loading-card{width:min(430px,92vw);display:flex;align-items:center;gap:16px;padding:20px 22px;border:1px solid #304034;border-radius:16px;background:linear-gradient(145deg,#0d120e,#090c0a);box-shadow:0 22px 60px rgba(0,0,0,.38)}
       .matchup-loading-spinner{width:30px;height:30px;flex:0 0 auto;border-radius:50%;border:3px solid #263128;border-top-color:#a8ff45;animation:matchupSpin .75s linear infinite}
       .matchup-loading-copy strong{display:block;color:#f7f8f4;font-size:15px;margin-bottom:4px}.matchup-loading-copy span{display:block;color:#8f988f;font-size:12px;line-height:1.45}
@@ -25,9 +26,9 @@
     ensureMatchupLoaderStyles();
     let loader=document.getElementById('matchup-screen-loader');
     if(!loader){loader=document.createElement('div');loader.id='matchup-screen-loader';loader.className='matchup-loading-overlay';loader.innerHTML='<div class="matchup-loading-card"><span class="matchup-loading-spinner" aria-hidden="true"></span><div class="matchup-loading-copy"><strong>Loading Weekly Matchups…</strong><span>Building your best lineup, league power rankings and matchup simulation.</span></div></div>';view.appendChild(loader)}
-    loader.hidden=false;
+    loader.hidden=false;loader.style.display='';
   }
-  function hideMatchupLoader(){const loader=document.getElementById('matchup-screen-loader');if(loader)loader.hidden=true}
+  function hideMatchupLoader(){const loader=document.getElementById('matchup-screen-loader');if(loader){loader.hidden=true;loader.style.display='none'}}
   function scheduleMatchupRender(){
     const token=++matchupRenderToken;showMatchupLoader();
     // Give the browser two paint opportunities so the loader is visible before
@@ -35,6 +36,7 @@
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       if(token!==matchupRenderToken||activeTab()!=='matchups'){hideMatchupLoader();return}
       try{if(typeof window.renderMatchupCenter==='function')window.renderMatchupCenter()}
+      catch(e){console.error('Weekly Matchups render failed',e)}
       finally{hideMatchupLoader()}
     }));
   }
