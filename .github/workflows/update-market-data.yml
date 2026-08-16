@@ -35,13 +35,9 @@ jobs:
 
       - name: Validate browser JavaScript
         run: |
-          node --check app-core.js
-          node --check app-feed.js
-          node --check app-market.js
-          node --check app-market-labels.js
-          node --check app-ui-a.js
-          node --check app-ui-b.js
-          node --check app-ui-c.js
+          for f in $(git ls-files '*.js'); do
+            node --check "$f"
+          done
 
       - name: Validate Python
         run: python -m py_compile scripts/update_market_data.py

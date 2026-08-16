@@ -31,9 +31,10 @@
         <h2>User-controlled access</h2>
       </div>
       <p>
-        The application is intended to access a user's fantasy information only after the
-        user explicitly authorizes access through the applicable OAuth flow. Access is
-        intended solely to provide fantasy-management features requested by that user.
+        The application stores authenticated league state in Firestore after the user
+        signs in with Firebase Auth. Protected AI and screenshot-analysis endpoints require
+        the user's Firebase sign-in token and are intended solely to provide
+        fantasy-management features requested by that user.
       </p>
     </section>
 
@@ -51,8 +52,10 @@
         <div class="card-number">02</div>
         <h3>Data use</h3>
         <p>
-          Authorized fantasy data is intended to be used to generate roster, lineup,
-          waiver, matchup, injury, and related fantasy-management analysis.
+          Authorized fantasy data is used to generate roster, lineup, waiver, matchup,
+          injury, trade, and related fantasy-management analysis. Recent league state is
+          also mirrored in the user's browser so changes can survive transient network
+          failures.
         </p>
       </article>
 

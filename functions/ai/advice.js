@@ -1,8 +1,10 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
+const { requireAuthenticatedUser, enforceDailyQuota, sendHttpError } = require('../lib/auth');
 
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.6';
+const DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 60);
 const SYSTEM = `You are an expert fantasy football GM for a competitive 14-team half-PPR league. Use only supplied data and distinguish measured inputs from inference. Never invent injuries, news, odds, projections, players, schedules or facts. For draft analysis recommend one best pick plus two alternatives using roster construction, scarcity, ECR, ADP and projections. For weekly analysis prioritize the actual NFL opponent for each player, true week-specific projections when supplied, matchup-adjusted projections and simulated fantasy win probability. For lineup analysis, review the supplied legal starting lineup against the bench using every week-specific factor actually present: NFL opponent, home/away, bye, player status, defense-vs-position factor, game time/status, venue/indoor/neutral-site, weather/wind, over-under/spread and projection source. Do not infer a missing factor. Treat a projection explicitly marked realWeeklyProjection=true as a genuine provider Week projection; do not describe it as season projection divided by 17. Prefer the supplied legal lineup unless a bench alternative has stronger supplied week-specific evidence. Explain the most important start/sit choices and close calls. For trade analysis, evaluate the supplied completed trade or acquisition target specifically from the user's roster perspective. Consider roster needs, player value, ECR/ADP/projection evidence, current ownership, positional scarcity, depth and any supplied Week context. If the user's team was not part of the completed trade, determine whether the transaction creates a realistic acquisition opportunity and identify which moved or affected player is worth targeting. If the user's team was involved, assess what was gained and lost and the best next roster action. Never assume another manager will accept a particular offer; describe reasonable offer structure only from the supplied values and rosters. For weekly matchup analysis explain whether the manager should prefer floor or ceiling based on win probability. Identify start/sit priorities, exploitable roster mismatches and realistic trades using all league rosters. Clearly separate one-week matchup value from rest-of-season value. If a data field is absent, explicitly say it is unavailable rather than guessing. Keep weekly answers focused and complete: prioritize actionable decisions, avoid repeating the same evidence, and always finish every started section and sentence.`;
 
 function taskPrompt(task){
@@ -41,6 +43,8 @@ const aiAdvice=onRequest({secrets:[OPENAI_API_KEY],timeoutSeconds:90,memory:'256
   const serialized=JSON.stringify(context);
   if(serialized.length>220000)return res.status(413).json({error:'Analysis context too large'});
   try{
+    const user=await requireAuthenticatedUser(req);
+    await enforceDailyQuota(user.uid,'aiAdvice',DAILY_LIMIT);
     const prompt=`${taskPrompt(task)}${weeklyStatus?`\nWEEKLY DATA STATUS: ${JSON.stringify(weeklyStatus)}. If hasProjectionData is true, the supplied values include real week-specific provider projections and must not be described as season/17 estimates. If hasSimulation is true, use the supplied simulation and its stated method; do not claim simulation metadata is unavailable when method/runs are present. If projection inputs are absent, state that clearly.`:''}\n\nLEAGUE DATA:\n${serialized}`;
     const first=await callResponses(prompt,6000);
     if(first.parseError)return res.status(502).json({error:'AI service returned an unreadable response'});
@@ -54,7 +58,7 @@ const aiAdvice=onRequest({secrets:[OPENAI_API_KEY],timeoutSeconds:90,memory:'256
     }
     if(!advice){console.error('OpenAI response contained no extractable advice',summary);const reason=summary.incompleteReason?` (${summary.incompleteReason})`:'';return res.status(502).json({error:`AI completed without usable text${reason}`,diagnostic:{status:summary.status,outputTypes:summary.outputTypes,weeklyData:weeklyStatus}})}
     return res.status(200).json({advice,model:OPENAI_MODEL,weeklyData:weeklyStatus,continued,incomplete:summary.status==='incomplete',incompleteReason:summary.incompleteReason||null});
-  }catch(error){console.error('aiAdvice failure',error);return res.status(500).json({error:'AI analysis temporarily unavailable'})}
+  }catch(error){const handled=sendHttpError(res,error);if(handled)return handled;console.error('aiAdvice failure',error);return res.status(500).json({error:'AI analysis temporarily unavailable'})}
 });
 
 module.exports={aiAdvice};
