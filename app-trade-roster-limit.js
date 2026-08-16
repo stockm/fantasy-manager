@@ -47,6 +47,7 @@
     if(typeof renderOpponentRosterEditor==='function')renderOpponentRosterEditor();
     if(typeof renderAdvice==='function')renderAdvice();
     if(typeof window.renderTradeCenter==='function')window.renderTradeCenter();
+    if(typeof window.renderMatchupCenter==='function')window.renderMatchupCenter();
     toast(message);
   }
   function closeModal(){document.getElementById('trade-roster-limit-modal')?.remove()}
@@ -113,6 +114,33 @@
     const name=typeof leagueTeamName==='function'?leagueTeamName(slot):`Team ${slot}`;
     refreshAfterMove(`${player.name} added to ${name} (${current.length+1}/${limit})`);
   }
+  function applyRecommendedRosterMove({addId,dropId='',slot=mySlot()}={}){
+    if(!ensureSeasonMode())return false;
+    const addPlayer=getPlayer(addId);if(!addPlayer)return toast('Recommended player not found','error'),false;
+    const targetSlot=Number(slot)||mySlot(),current=rosterIds(targetSlot),teamName=typeof leagueTeamName==='function'?leagueTeamName(targetSlot):`Team ${targetSlot}`;
+    if(current.includes(addId))return toast(`${addPlayer.name} is already on ${teamName}`,'error'),false;
+    const owner=typeof window.ownerSlotOf==='function'?window.ownerSlotOf(addId):null;
+    if(owner&&Number(owner)!==targetSlot){toast(`${addPlayer.name} is rostered by ${leagueTeamName(owner)}. Open Trade Center to build an offer.`,'error');switchTab?.('trades');window.renderTradeCenter?.();return false}
+    const dropPlayer=dropId?getPlayer(dropId):null;
+    if(dropId&&!dropPlayer)return toast('Drop candidate not found','error'),false;
+    if(dropPlayer&&!current.includes(dropPlayer.id))return toast(`${dropPlayer.name} is not on ${teamName}`,'error'),false;
+    const limit=rosterLimit();
+    if(limit<=0)return toast('This league has no configured active roster spots','error'),false;
+    if(dropPlayer){
+      if(!confirm(`Apply this recommendation?\n\nAdd ${addPlayer.name} to ${teamName}\nDrop ${dropPlayer.name}`))return false;
+      movePlayer(dropPlayer.id,null);
+      movePlayer(addPlayer.id,targetSlot);
+      refreshAfterMove(`${addPlayer.name} added; ${dropPlayer.name} removed`);
+      return true;
+    }
+    const requiredRemovals=Math.max(0,current.length+1-limit);
+    if(requiredRemovals>0){showReplacementPicker(targetSlot,addPlayer,requiredRemovals);return false}
+    if(!confirm(`Add ${addPlayer.name} to ${teamName}?`))return false;
+    movePlayer(addPlayer.id,targetSlot);
+    refreshAfterMove(`${addPlayer.name} added to ${teamName} (${current.length+1}/${limit})`);
+    return true;
+  }
   installStyles();
   document.addEventListener('click',handleAddClick,true);
+  window.applyRecommendedRosterMove=applyRecommendedRosterMove;
 })();
