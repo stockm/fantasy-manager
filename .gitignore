@@ -11,3 +11,6 @@ secrets/
 __pycache__/
 *.pyc
 .venv/
+node_modules/
+functions/node_modules/
+.firebase/

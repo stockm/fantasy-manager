@@ -2,9 +2,9 @@
 
 **Fantasy Manager** is an AI-assisted fantasy football management and live draft assistant being developed by Kreativ Software LLC.
 
-## Manual mode — available now
+## Firebase-hosted app — available now
 
-The GitHub Pages app works without Yahoo API credentials. League, roster and draft state is stored locally in the browser.
+The production app is designed for Firebase Hosting plus Cloud Functions. Firebase Auth protects cloud league storage and paid AI/image-analysis endpoints, while Firestore stores authenticated league state and lightweight public caches.
 
 Current features:
 
@@ -20,9 +20,36 @@ Current features:
 - Automatic roster building from the user's recorded draft selections
 - Weekly projection editing and legal lineup optimization
 - Undo last draft pick, full draft board, JSON backup/restore
-- Local-only league/draft storage via `localStorage`
+- Authenticated Firestore league/draft storage with an immediate local browser mirror for save resilience
+- Firebase Functions for AI advice, screenshot import and cached NFL week data
+- Scheduled Functions to warm NFL week caches and clean old quota/cache documents
 
-Use the site at `https://stockm.github.io/fantasy-manager/`.
+Deploy the production site with Firebase Hosting. GitHub Pages can still serve static assets, but same-origin `/api/*` Function rewrites and authenticated cloud features require Firebase Hosting.
+
+## Production Firebase setup
+
+Required Firebase pieces:
+
+- Firebase Hosting for the web app and `/api/*` rewrites
+- Cloud Functions for `aiAdvice`, `screenshotImport`, `nflWeek` and scheduled cache/cleanup tasks
+- Firestore for user league state, usage counters and public NFL week cache documents
+- Firebase Auth email/password sign-in
+
+Required secret:
+
+```bash
+firebase functions:secrets:set OPENAI_API_KEY
+```
+
+Useful runtime environment variables:
+
+- `OPENAI_MODEL`, default `gpt-5.6`
+- `AI_DAILY_LIMIT`, default `60`
+- `SCREENSHOT_IMPORT_DAILY_LIMIT`, default `20`
+- `NFL_SEASON`, optional scheduled-cache season override
+- `NFL_CURRENT_WEEK`, optional scheduled-cache week override
+- `NFL_CACHE_WEEKS`, comma-separated scheduled-cache weeks, such as `1,2`
+- `NFL_WEEK_CACHE_MAX_AGE_MS`, default 30 minutes
 
 ## Yahoo league preset
 
@@ -106,7 +133,7 @@ Planned synced capabilities include league settings/rosters, matchups, standings
 
 ## Privacy
 
-Manual-mode league, draft and roster information is stored in the user's browser. Public rankings/player feeds contain no Yahoo account credentials. Authentication credentials, client secrets and OAuth tokens must never be committed to this repository.
+Authenticated league, draft and roster information is stored in the user's Firestore document and mirrored locally in the browser so recent changes survive transient network failures. Public rankings/player feeds contain no Yahoo account credentials. Authentication credentials, client secrets and OAuth tokens must never be committed to this repository.
 
 See [privacy.html](privacy.html) for the privacy statement.
 

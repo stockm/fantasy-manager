@@ -263,7 +263,7 @@
     box.innerHTML='<div class="ai-note">AI is reviewing Week '+week+' opponents, home/away, status and all available matchup factors…</div>';
     try{
       const context=lineupAiContext(week,result);
-      const response=await fetch('/api/ai-advice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:'lineup',context})});
+      const response=await fetch('/api/ai-advice',{method:'POST',headers:typeof authorizedJsonHeaders==='function'?await authorizedJsonHeaders():{'Content-Type':'application/json'},body:JSON.stringify({task:'lineup',context})});
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(data.error||`AI service returned ${response.status}`);
       const text=String(data.advice||'').trim();if(!text)throw new Error('AI service returned no lineup analysis');

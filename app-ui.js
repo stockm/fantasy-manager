@@ -1,17 +1,79 @@
-const marketStyle = document.createElement('link');
-marketStyle.rel = 'stylesheet';
-marketStyle.href = 'market.css';
-document.head.appendChild(marketStyle);
-const screenshotImportStyle = document.createElement('link');
-screenshotImportStyle.rel = 'stylesheet';
-screenshotImportStyle.href = 'app-screenshot-import-polish.css';
-document.head.appendChild(screenshotImportStyle);
-const postDraftStyle = document.createElement('link');
-postDraftStyle.rel = 'stylesheet';
-postDraftStyle.href = 'post-draft.css';
-document.head.appendChild(postDraftStyle);
-const seasonDashboardStyle = document.createElement('link');
-seasonDashboardStyle.rel = 'stylesheet';
-seasonDashboardStyle.href = 'season-dashboard.css';
-document.head.appendChild(seasonDashboardStyle);
-document.write('<script src="app-yahoo-config.js"><\/script><script src="app-market.js"><\/script><script src="app-market-labels.js"><\/script><script src="app-position-normalization.js"><\/script><script src="app-defense-score.js"><\/script><script src="app-draft-value-engine.js"><\/script><script src="app-defense-draft-integration.js"><\/script><script src="app-ui-a.js"><\/script><script src="app-ui-b.js"><\/script><script src="app-ui-c.js"><\/script><script src="app-league.js"><\/script><script src="app-draft-team-names.js"><\/script><script src="app-advice.js"><\/script><script src="app-draft-state-integrity.js"><\/script><script src="app-auto.js"><\/script><script src="app-nfl-intelligence.js"><\/script><script src="app-draft-guard.js"><\/script><script src="app-ai.js"><\/script><script src="app-weekly-lineup.js"><\/script><script src="app-weekly-projections.js"><\/script><script src="app-trades.js"><\/script><script src="app-trade-roster-limit.js"><\/script><script src="app-screenshot-import.js"><\/script><script src="app-matchup-center.js"><\/script><script src="app-weekly-projection-autoload.js"><\/script><script src="app-matchup-analysis-progress.js"><\/script><script src="app-draft-live.js"><\/script><script src="app-draft-roster-flow.js"><\/script><script src="app-player-card-enhance.js"><\/script><script src="app-test-autodraft.js"><\/script><script src="app-firebase-data.js"><\/script><script src="app-performance.js"><\/script><script src="app-season-dashboard.js"><\/script><script src="app-theme.js"><\/script><script src="app-auth-premium.js"><\/script>');
+const STYLE_ASSETS = [
+  'market.css',
+  'app-screenshot-import-polish.css',
+  'post-draft.css',
+  'season-dashboard.css'
+];
+
+const SCRIPT_ASSETS = [
+  'app-yahoo-config.js',
+  'app-market.js',
+  'app-market-labels.js',
+  'app-position-normalization.js',
+  'app-defense-score.js',
+  'app-draft-value-engine.js',
+  'app-defense-draft-integration.js',
+  'app-ui-a.js',
+  'app-ui-b.js',
+  'app-ui-c.js',
+  'app-league.js',
+  'app-draft-team-names.js',
+  'app-advice.js',
+  'app-draft-state-integrity.js',
+  'app-auto.js',
+  'app-nfl-intelligence.js',
+  'app-draft-guard.js',
+  'app-ai.js',
+  'app-weekly-lineup.js',
+  'app-weekly-projections.js',
+  'app-trades.js',
+  'app-trade-roster-limit.js',
+  'app-screenshot-import.js',
+  'app-matchup-center.js',
+  'app-weekly-projection-autoload.js',
+  'app-matchup-analysis-progress.js',
+  'app-draft-live.js',
+  'app-draft-roster-flow.js',
+  'app-player-card-enhance.js',
+  'app-test-autodraft.js',
+  'app-firebase-data.js',
+  'app-performance.js',
+  'app-season-dashboard.js',
+  'app-theme.js',
+  'app-auth-premium.js'
+];
+
+function appendStylesheet(href) {
+  if (document.querySelector(`link[href="${href}"]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = false;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.body.appendChild(script);
+  });
+}
+
+async function bootUiModules() {
+  STYLE_ASSETS.forEach(appendStylesheet);
+  for (const src of SCRIPT_ASSETS) {
+    await loadScript(src);
+  }
+}
+
+bootUiModules().catch(error => {
+  console.error(error);
+  const el = document.getElementById('toast');
+  if (el) {
+    el.textContent = error.message;
+    el.className = 'toast show error';
+  }
+});

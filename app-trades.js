@@ -316,7 +316,7 @@
   }
 
   async function callTradeAi(context){
-    const res=await fetch(typeof aiEndpoint==='function'?aiEndpoint():'/api/ai-advice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:'trade',context})});
+    const res=await fetch(typeof aiEndpoint==='function'?aiEndpoint():'/api/ai-advice',{method:'POST',headers:typeof authorizedJsonHeaders==='function'?await authorizedJsonHeaders():{'Content-Type':'application/json'},body:JSON.stringify({task:'trade',context})});
     const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||`AI service returned ${res.status}`);const text=String(data.advice||'').trim();if(!text)throw new Error('AI service returned no advice');return text;
   }
 
