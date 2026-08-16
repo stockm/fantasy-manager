@@ -55,7 +55,7 @@ function requestOrigin(req) {
   }
 }
 
-async function accountSummary(uid, email = '') {
+async function accountSummary(uid, email = '', authProfile = {}) {
   const [billingSnap, usageSnap, purchasesSnap] = await Promise.all([
     billingRef(uid).get(),
     todayUsageRef(uid).get(),
@@ -68,6 +68,8 @@ async function accountSummary(uid, email = '') {
   return {
     plan: billing.plan || 'Free + token packs',
     email,
+    displayName: authProfile.displayName || '',
+    emailVerified: !!authProfile.emailVerified,
     tokenBalance: Number(billing.tokenBalance || 0),
     lifetimePurchased: Number(billing.lifetimePurchased || 0),
     lifetimeSpent: Number(billing.lifetimeSpent || 0),
@@ -86,7 +88,11 @@ const accountProfile = onRequest({ timeoutSeconds: 30, memory: '256MiB' }, async
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const user = await requireAuthenticatedUser(req);
-    return res.status(200).json(await accountSummary(user.uid, user.email || ''));
+    const authRecord = await admin.auth().getUser(user.uid).catch(() => null);
+    return res.status(200).json(await accountSummary(user.uid, authRecord?.email || user.email || '', {
+      displayName: authRecord?.displayName || user.name || '',
+      emailVerified: !!(authRecord?.emailVerified || user.email_verified)
+    }));
   } catch (error) {
     const handled = sendHttpError(res, error);
     if (handled) return handled;

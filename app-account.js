@@ -47,8 +47,17 @@
       .account-note{border:1px dashed #344036;border-radius:8px;background:#0a0e0b;color:#9da69c;padding:16px;line-height:1.55}
       .account-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
       .account-actions .btn[disabled],.account-pack .btn[disabled]{opacity:.55;cursor:progress;transform:none}
+      .account-profile-surface{margin-bottom:16px}
+      .account-profile-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+      .account-profile-form label{display:flex;flex-direction:column;gap:7px;color:#8e978e;font-size:10px;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
+      .account-profile-form input{width:100%;box-sizing:border-box}
+      .account-profile-form .full{grid-column:1/-1}
+      .account-profile-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+      .account-status-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #304034;border-radius:999px;padding:6px 9px;color:#b8ff63;background:#0d140f;font-size:11px;font-weight:850}
+      .account-form-message{min-height:20px;color:#9da69c;font-size:12px}
+      .account-form-message.error{color:#ff8a9b}
       @media(max-width:1100px){.account-grid,.account-plan-grid{grid-template-columns:1fr}.account-kpis{grid-template-columns:1fr 1fr}}
-      @media(max-width:640px){.account-kpis{grid-template-columns:1fr}.account-actions{align-items:stretch;flex-direction:column}.account-actions .btn{width:100%}}
+      @media(max-width:640px){.account-kpis,.account-profile-form{grid-template-columns:1fr}.account-profile-form .full{grid-column:auto}.account-actions,.account-profile-actions{align-items:stretch;flex-direction:column}.account-actions .btn,.account-profile-actions .btn{width:100%}}
     `;
     document.head.appendChild(s);
   }
@@ -99,12 +108,31 @@
     const freeUsed = Number(data?.freeUsedToday || 0);
     const freeAllowance = Number(data?.freeDailyAllowance || 0);
     const freeRemaining = Number(data?.freeRemainingToday || 0);
+    const user = typeof window.fmCurrentUser === 'function' ? window.fmCurrentUser() : null;
+    const displayName = user?.displayName || data?.displayName || '';
+    const email = user?.email || data?.email || '';
+    const emailVerified = !!(user?.emailVerified || data?.emailVerified);
     return `
       <div class="account-kpis">
-        <article class="account-kpi"><span>Signed in as</span><strong style="font-size:20px;line-height:1.2;overflow-wrap:anywhere">${esc(data?.email || 'Account')}</strong><small>${esc(data?.plan || 'Free + token packs')}</small></article>
+        <article class="account-kpi"><span>Signed in as</span><strong style="font-size:20px;line-height:1.2;overflow-wrap:anywhere">${esc(displayName || email || 'Account')}</strong><small>${esc(email || data?.plan || 'Free + token packs')}</small></article>
         <article class="account-kpi"><span>AI token balance</span><strong>${Number(data?.tokenBalance || 0).toLocaleString()}</strong><small>${fmtTokens(data?.lifetimePurchased)} purchased lifetime</small></article>
         <article class="account-kpi"><span>Free today</span><strong>${freeRemaining}</strong><small>${freeUsed} of ${freeAllowance} free tokens used on ${esc(data?.usageDay || 'today')}</small></article>
       </div>
+      <article class="surface account-profile-surface">
+        <div class="surface-head no-pad"><div><span class="section-label">PROFILE</span><h2>Account settings</h2></div><span class="account-status-pill">${emailVerified ? 'Email verified' : 'Email not verified'}</span></div>
+        <form class="account-profile-form" id="account-profile-form">
+          <label>Display name<input id="account-display-name" autocomplete="name" value="${esc(displayName)}" placeholder="Your name"></label>
+          <label>Email address<input id="account-email" type="email" autocomplete="email" value="${esc(email)}" placeholder="you@example.com"></label>
+          <label>Current password<input id="account-current-password" type="password" autocomplete="current-password" placeholder="Required for email or password changes"></label>
+          <label>New password<input id="account-new-password" type="password" autocomplete="new-password" minlength="6" placeholder="Leave blank to keep current password"></label>
+          <div class="account-profile-actions full">
+            <button class="btn primary" id="account-save-profile" type="submit">Save account</button>
+            <button class="btn secondary" id="account-send-verification" type="button">Send verification email</button>
+            <button class="btn secondary" id="account-password-reset" type="button">Send password reset</button>
+          </div>
+          <div class="account-form-message full" id="account-form-message"></div>
+        </form>
+      </article>
       <div class="account-grid">
         <article class="surface">
           <div class="surface-head no-pad"><div><span class="section-label">TOKEN PACKS</span><h2>Buy AI analysis tokens</h2></div></div>
@@ -150,6 +178,12 @@
     root.querySelectorAll('[data-buy-pack]').forEach(btn => {
       btn.addEventListener('click', () => startCheckout(btn.dataset.buyPack, btn));
     });
+    document.getElementById('account-profile-form')?.addEventListener('submit', event => {
+      event.preventDefault();
+      saveAccountSettings().catch(() => {});
+    });
+    document.getElementById('account-send-verification')?.addEventListener('click', () => sendVerificationEmail().catch(() => {}));
+    document.getElementById('account-password-reset')?.addEventListener('click', () => sendPasswordReset().catch(() => {}));
   }
 
   async function loadProfile(options = {}) {
@@ -163,6 +197,8 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Account returned ${res.status}`);
       profile = data;
+      window.fmAccountProfile = data;
+      if (typeof renderFirebaseUser === 'function') renderFirebaseUser();
       accountError = '';
       return data;
     } catch (error) {
@@ -177,7 +213,7 @@
 
   async function startCheckout(packId, button) {
     if (!packId || !button) return;
-    button.disabled = true;
+    if (button) button.disabled = true;
     const oldText = button.textContent;
     button.textContent = 'Starting checkout...';
     try {
@@ -189,8 +225,67 @@
       window.location.href = data.url;
     } catch (error) {
       toast?.(error.message, 'error');
-      button.disabled = false;
+      if (button) button.disabled = false;
       button.textContent = oldText;
+    }
+  }
+
+  function setFormMessage(message, isError = false) {
+    const el = document.getElementById('account-form-message');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle('error', !!isError);
+  }
+
+  async function saveAccountSettings() {
+    const button = document.getElementById('account-save-profile');
+    if (!window.fmUpdateAccountProfile) return setFormMessage('Account updates are not ready yet.', true);
+    const payload = {
+      displayName: document.getElementById('account-display-name')?.value || '',
+      email: document.getElementById('account-email')?.value || '',
+      currentPassword: document.getElementById('account-current-password')?.value || '',
+      newPassword: document.getElementById('account-new-password')?.value || ''
+    };
+    if (button) button.disabled = true;
+    setFormMessage('Saving account...');
+    try {
+      await window.fmUpdateAccountProfile(payload);
+      document.getElementById('account-current-password').value = '';
+      document.getElementById('account-new-password').value = '';
+      setFormMessage('Account updated.');
+      await loadProfile({ silent: true });
+    } catch (error) {
+      setFormMessage(error.message || 'Account update failed', true);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function sendVerificationEmail() {
+    const button = document.getElementById('account-send-verification');
+    if (!window.fmSendVerificationEmail) return setFormMessage('Email verification is not ready yet.', true);
+    if (button) button.disabled = true;
+    try {
+      await window.fmSendVerificationEmail();
+      setFormMessage('Verification email sent.');
+    } catch (error) {
+      setFormMessage(error.message || 'Could not send verification email', true);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function sendPasswordReset() {
+    const button = document.getElementById('account-password-reset');
+    if (!window.fmSendResetEmail) return setFormMessage('Password reset is not ready yet.', true);
+    button.disabled = true;
+    try {
+      await window.fmSendResetEmail();
+      setFormMessage('Password reset email sent.');
+    } catch (error) {
+      setFormMessage(error.message || 'Could not send password reset email', true);
+    } finally {
+      button.disabled = false;
     }
   }
 
@@ -211,6 +306,13 @@
   function bind() {
     document.getElementById('account-refresh')?.addEventListener('click', () => loadProfile().catch(() => {}));
     window.addEventListener('fm:state-ready', () => loadProfile({ silent: true }).catch(() => {}));
+    window.addEventListener('fm:account-updated', event => {
+      if (profile) {
+        profile = { ...profile, ...event.detail };
+        window.fmAccountProfile = profile;
+        render(profile);
+      }
+    });
   }
 
   installShell();
