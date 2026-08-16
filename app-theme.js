@@ -1,6 +1,10 @@
 // Logged-in visual theme + safe lightweight Markdown formatter for AI responses.
 (function installAppTheme(){
-  const css=document.createElement('link');css.rel='stylesheet';css.href='app-theme.css';document.head.appendChild(css);
+  const themeLoaded = [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .some(link => link.id === 'app-theme-css' || link.href.endsWith('/app-theme.css'));
+  if(!themeLoaded){
+    const css=document.createElement('link');css.id='app-theme-css';css.rel='stylesheet';css.href='app-theme.css';document.head.appendChild(css);
+  }
 
   const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   function inline(text){
