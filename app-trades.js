@@ -11,6 +11,7 @@
     if(!Array.isArray(state.trades))state.trades=[];
     if(!Array.isArray(state.tradeRecommendations))state.tradeRecommendations=[];
     if(!state.tradeTargetAnalyses||typeof state.tradeTargetAnalyses!=='object')state.tradeTargetAnalyses={};
+    if(!state.tradeWeeklyAi||typeof state.tradeWeeklyAi!=='object')state.tradeWeeklyAi={};
     if(typeof state.seasonRosterMode!=='boolean')state.seasonRosterMode=false;
   }
 
@@ -145,6 +146,51 @@
     return out.sort((a,b)=>b.score-a.score).slice(0,12);
   }
 
+  function currentTradeWeek(){
+    return Math.max(1,Math.min(18,Number(state.currentWeek)||Number(document.getElementById('matchup-center-week')?.value)||Number(document.getElementById('lineup-week')?.value)||Number(document.getElementById('matchup-week')?.value)||1));
+  }
+
+  function playerWeekValue(p,week){
+    if(typeof adjustedWeeklyProjection==='function'){
+      try{return Number(adjustedWeeklyProjection(p,week)?.adjusted||0)}
+      catch(_){/* no-op */}
+    }
+    if(typeof weeklyPlayerContext==='function'){
+      try{return Number(weeklyPlayerContext(p,week)?.adjustedWeeklyProjection||0)}
+      catch(_){/* no-op */}
+    }
+    return playerWeeklyValue(p);
+  }
+
+  function legalLineupFor(players,week){
+    if(typeof window.bestWeeklyLineup==='function'){
+      try{return window.bestWeeklyLineup(players,week)}
+      catch(e){console.warn('Trade Center lineup comparison fell back',e)}
+    }
+    return{week,total:players.reduce((s,p)=>s+playerWeekValue(p,week),0),assignments:[],bench:[]};
+  }
+
+  function freeAgentUpgradeIdeas(week=currentTradeWeek()){
+    ensureTradeData();
+    const owned=new Set();
+    for(let slot=1;slot<=leagueSize();slot++)seasonRosterIds(slot).forEach(id=>owned.add(id));
+    (state.manualRosterIds||[]).forEach(id=>owned.add(id));
+    const roster=seasonRoster(mySlot()),baseLineup=legalLineupFor(roster,week),baseTotal=Number(baseLineup.total||0);
+    const bench=(baseLineup.bench&&baseLineup.bench.length?baseLineup.bench:roster).slice().sort((a,b)=>playerWeekValue(a,week)-playerWeekValue(b,week)||playerTradeValue(a)-playerTradeValue(b));
+    const baseDrop=bench[0]||null;
+    const pool=(state.players||[]).filter(p=>!owned.has(p.id)&&!/OUT|IR|SUSP|PUP|NFI/i.test(String(p.status||''))).map(p=>({p,weekly:playerWeekValue(p,week),rank:num(p.rank,9999),tradeValue:playerTradeValue(p)})).sort((a,b)=>b.weekly-a.weekly||a.rank-b.rank||b.tradeValue-a.tradeValue).slice(0,90);
+    return pool.map(x=>{
+      const candidateRoster=baseDrop?roster.filter(p=>p.id!==baseDrop.id).concat([x.p]):roster.concat([x.p]);
+      const next=legalLineupFor(candidateRoster,week),gain=Number(next.total||0)-baseTotal;
+      const need=myPositionNeed(x.p),reasonParts=[];
+      if(gain>.25)reasonParts.push(`adds ${gain.toFixed(1)} projected Week ${week} points`);
+      else reasonParts.push('bench depth or stash candidate');
+      reasonParts.push(need.label);
+      if(baseDrop)reasonParts.push(`drop comparison: ${baseDrop.name}`);
+      return{playerId:x.p.id,week,score:Number((gain*5+x.weekly+need.bonus*.35+x.tradeValue*.08).toFixed(2)),weeklyProjection:Number(x.weekly.toFixed(2)),lineupGain:Number(gain.toFixed(2)),dropPlayerId:baseDrop?.id||null,reason:reasonParts.join(' · ')};
+    }).filter(x=>x.lineupGain>-2||x.weeklyProjection>=8).sort((a,b)=>b.score-a.score||b.lineupGain-a.lineupGain).slice(0,10);
+  }
+
   function refreshTradeRecommendations({persist=false}={}){
     state.tradeRecommendations=buildTradeRecommendations();
     if(persist)saveState();
@@ -181,6 +227,12 @@
           <div id="trade-recommendations" class="trade-recommendations"></div>
         </article>
 
+        <article class="surface trade-weekly-surface">
+          <div class="surface-head"><div><span class="section-label">WEEKLY MOVES</span><h2 id="trade-weekly-title">Waivers & trades</h2><p class="trade-helper">AI compares free agents, trade targets, your lineup and this week's matchup.</p></div><button class="btn primary small" id="trade-ai-weekly">AI weekly plan</button></div>
+          <div id="trade-free-agents" class="trade-free-agents"></div>
+          <div id="trade-weekly-ai-output" class="trade-weekly-ai"></div>
+        </article>
+
         <div class="trade-grid-main">
           <article class="surface trade-record-surface">
             <div class="surface-head"><div><span class="section-label">RECORD TRANSACTION</span><h2>Completed trade</h2><p class="trade-helper">Choose the two teams and the players moving each way. Rosters update immediately.</p></div></div>
@@ -207,12 +259,12 @@
     if(!document.getElementById('trade-center-style')){
       const s=document.createElement('style');s.id='trade-center-style';s.textContent=`
         .trade-view{max-width:1500px}.trade-page-head{align-items:flex-start}.trade-season-mode{font-size:10px;font-weight:900;letter-spacing:.06em;border:1px solid #334055;border-radius:999px;padding:7px 10px;color:#98a5ba;white-space:nowrap}
-        .trade-rec-surface{margin-bottom:16px;background:linear-gradient(145deg,#111620,#0c1119)!important;border-color:#2e394c!important}.trade-helper{margin:5px 0 0;color:#8591a5;font-size:12px;line-height:1.5}.trade-recommendations{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.trade-target{min-width:0;border:1px solid #2d394c;border-radius:14px;background:#0b1119;padding:14px;display:flex;flex-direction:column;gap:9px}.trade-target-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.trade-target strong{font-size:16px}.trade-target small{display:block;color:#7f8ca1;margin-top:3px}.trade-target-score{font-weight:900;color:#73e59a;background:#10271a;border:1px solid #275b39;border-radius:999px;padding:5px 8px;white-space:nowrap}.trade-target-reason{font-size:11px;color:#9aa6b9;line-height:1.45;min-height:31px}.trade-target-actions{display:flex;gap:7px;align-items:center;margin-top:auto}.trade-target-ai{font-size:11px;line-height:1.5;border-top:1px solid #263144;padding-top:9px;color:#c2cad7}
+        .trade-rec-surface,.trade-weekly-surface{margin-bottom:16px;background:linear-gradient(145deg,#111620,#0c1119)!important;border-color:#2e394c!important}.trade-helper{margin:5px 0 0;color:#8591a5;font-size:12px;line-height:1.5}.trade-recommendations,.trade-free-agents{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.trade-target,.trade-free-agent{min-width:0;border:1px solid #2d394c;border-radius:14px;background:#0b1119;padding:14px;display:flex;flex-direction:column;gap:9px}.trade-target-top,.trade-free-agent-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.trade-target strong,.trade-free-agent strong{font-size:16px}.trade-target small,.trade-free-agent small{display:block;color:#7f8ca1;margin-top:3px}.trade-target-score,.trade-free-agent-score{font-weight:900;color:#73e59a;background:#10271a;border:1px solid #275b39;border-radius:999px;padding:5px 8px;white-space:nowrap}.trade-target-reason,.trade-free-agent-reason{font-size:11px;color:#9aa6b9;line-height:1.45;min-height:31px}.trade-target-actions{display:flex;gap:7px;align-items:center;margin-top:auto}.trade-target-ai{font-size:11px;line-height:1.5;border-top:1px solid #263144;padding-top:9px;color:#c2cad7}.trade-weekly-ai{margin-top:12px}.trade-weekly-ai .ai-note,.trade-weekly-ai .ai-response{margin-top:0}.trade-free-agent-gain{color:#a8ff45;font-weight:900}
         .trade-grid-main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:16px}.trade-record-surface,.roster-manager-surface,.trade-history-surface{overflow:hidden}.trade-team-selects{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px}.trade-team-selects label,.trade-roster-team-label,.trade-notes-label{display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:900;letter-spacing:.07em;color:#8f9caf;text-transform:uppercase}.trade-team-selects select,.trade-roster-team-label select,.trade-notes-label input,.trade-add-player select{width:100%;box-sizing:border-box}.trade-swap{padding-bottom:11px;color:#8e70ef;font-size:20px}.trade-player-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0}.trade-column-title{font-size:11px;font-weight:900;letter-spacing:.06em;color:#b6c0d0;margin-bottom:7px}.trade-player-picker{height:290px;overflow:auto;border:1px solid #2b3649;border-radius:12px;background:#0a0f17;padding:5px}.trade-pick-player{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:9px 8px;border-bottom:1px solid #202a39;cursor:pointer}.trade-pick-player:last-child{border-bottom:0}.trade-pick-player input{margin:0}.trade-pick-player span{min-width:0}.trade-pick-player strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}.trade-pick-player small{display:block;color:#748197;font-size:10px}.trade-pick-value{font-size:10px;font-weight:900;color:#9aa8bb}.trade-notes-label{margin:8px 0 12px}
         .trade-roster-list{height:372px;overflow:auto;border:1px solid #2b3649;border-radius:12px;background:#0a0f17;margin:12px 0}.trade-roster-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px;border-bottom:1px solid #202a39}.trade-roster-row:last-child{border-bottom:0}.trade-roster-row strong{display:block;font-size:12px}.trade-roster-row small{display:block;font-size:10px;color:#748197}.trade-roster-value{font-size:10px;font-weight:900;color:#a9b4c5}.trade-add-player{display:grid;grid-template-columns:1fr auto;gap:8px}
         .trade-history-surface{margin-top:16px}.trade-history-card{border:1px solid #2d394c;border-radius:14px;background:#0b1119;margin-top:10px;overflow:hidden}.trade-history-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:14px 16px;border-bottom:1px solid #263144}.trade-history-head strong{display:block}.trade-history-head small{display:block;color:#79869a;margin-top:3px}.trade-history-actions{display:flex;gap:7px}.trade-flow{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px}.trade-flow>div{border:1px solid #263144;border-radius:10px;padding:10px}.trade-flow span{display:block;font-size:9px;font-weight:900;color:#78869b;letter-spacing:.06em}.trade-flow b{display:block;margin-top:4px;font-size:12px}.trade-ai-analysis{margin:0 16px 15px;padding:12px;border:1px dashed #37445a;border-radius:11px;color:#c4ccd8;font-size:12px;line-height:1.55}.trade-ai-analysis.pending{color:#929eb1}.trade-empty{padding:18px;color:#78869b;text-align:center;font-size:12px}
-        @media(max-width:1150px){.trade-recommendations{grid-template-columns:repeat(2,minmax(0,1fr))}.trade-grid-main{grid-template-columns:1fr}}
-        @media(max-width:700px){.trade-recommendations{grid-template-columns:1fr}.trade-team-selects{grid-template-columns:1fr}.trade-swap{display:none}.trade-player-columns,.trade-flow{grid-template-columns:1fr}.trade-player-picker{height:220px}.trade-history-head{flex-direction:column}.trade-history-actions{width:100%}.trade-history-actions .btn{flex:1}.trade-add-player{grid-template-columns:1fr}.trade-target-actions{flex-wrap:wrap}}
+        @media(max-width:1150px){.trade-recommendations,.trade-free-agents{grid-template-columns:repeat(2,minmax(0,1fr))}.trade-grid-main{grid-template-columns:1fr}}
+        @media(max-width:700px){.trade-recommendations,.trade-free-agents{grid-template-columns:1fr}.trade-team-selects{grid-template-columns:1fr}.trade-swap{display:none}.trade-player-columns,.trade-flow{grid-template-columns:1fr}.trade-player-picker{height:220px}.trade-history-head{flex-direction:column}.trade-history-actions{width:100%}.trade-history-actions .btn{flex:1}.trade-add-player{grid-template-columns:1fr}.trade-target-actions{flex-wrap:wrap}}
       `;document.head.appendChild(s);
     }
   }
@@ -256,6 +308,22 @@
     root.innerHTML=recs.length?recs.slice(0,9).map(recommendationMarkup).join(''):'<div class="trade-empty">Maintain opponent rosters to generate acquisition targets.</div>';
   }
 
+  function freeAgentMarkup(rec){
+    const p=getPlayer(rec.playerId),drop=getPlayer(rec.dropPlayerId);if(!p)return'';
+    return`<div class="trade-free-agent"><div class="trade-free-agent-top"><div><strong>${esc(p.name)}</strong><small>${esc(posKey(p))} · ${esc(p.team||'')} · Free agent</small></div><span class="trade-free-agent-score">${rec.weeklyProjection.toFixed(1)}</span></div><div class="trade-free-agent-reason">${esc(rec.reason)}</div><div><span class="mini-pill">Week ${rec.week}</span> <span class="mini-pill trade-free-agent-gain">${rec.lineupGain>=0?'+':''}${rec.lineupGain.toFixed(1)}</span>${drop?` <span class="mini-pill">Drop ${esc(drop.name)}</span>`:''}</div></div>`;
+  }
+
+  function renderWeeklyMoves(){
+    const week=currentTradeWeek(),title=document.getElementById('trade-weekly-title'),freeRoot=document.getElementById('trade-free-agents'),aiRoot=document.getElementById('trade-weekly-ai-output');
+    if(title)title.textContent=`Waivers & trades for Week ${week}`;
+    const ideas=freeAgentUpgradeIdeas(week);
+    if(freeRoot)freeRoot.innerHTML=ideas.length?ideas.slice(0,6).map(freeAgentMarkup).join(''):'<div class="trade-empty">No free-agent upgrades found from the current player pool.</div>';
+    if(aiRoot){
+      const ai=state.tradeWeeklyAi?.[String(week)];
+      aiRoot.innerHTML=ai?.text?`<div class="${ai.status==='error'?'ai-note':'ai-response'}">${esc(ai.text).replaceAll('\n','<br>')}</div>`:'';
+    }
+  }
+
   function playerNames(ids){return(ids||[]).map(getPlayer).filter(Boolean).map(p=>p.name)}
 
   function renderTradeHistory(){
@@ -276,7 +344,7 @@
     if(b&&!b.options.length)b.innerHTML=teamOptions(mySlot()===1?2:1);
     if(r&&!r.options.length)r.innerHTML=teamOptions(mySlot());
     if(a&&b&&Number(a.value)===Number(b.value)){const alt=state.leagueTeams.find(t=>t.slot!==Number(a.value));if(alt)b.value=String(alt.slot)}
-    renderRecommendations();renderTradePickers();renderRosterManager();renderTradeHistory();
+    renderRecommendations();renderWeeklyMoves();renderTradePickers();renderRosterManager();renderTradeHistory();
   }
 
   function selectedTradeIds(slot){return[...document.querySelectorAll(`[data-trade-send="${slot}"]:checked`)].map(x=>x.value)}
@@ -306,13 +374,17 @@
     analyzeRecordedTrade(trade.id).catch(()=>{});
   }
 
-  function tradeContext(trade,focusTarget=null){
+  function tradeContext(trade,focusTarget=null,intent='trade'){
     refreshTradeRecommendations();
-    const week=Math.max(1,Math.min(18,Number(state.currentWeek)||Number(document.getElementById('lineup-week')?.value)||Number(document.getElementById('matchup-week')?.value)||1));
+    const week=currentTradeWeek();
     const recommendations=(state.tradeRecommendations||[]).slice(0,10).map(r=>({player:tradeCompactPlayer(getPlayer(r.playerId)),ownerTeam:leagueTeamName(r.ownerSlot),ownerSlot:r.ownerSlot,acquisitionScore:r.score,upgradeVsCurrentDepth:r.upgrade,reason:r.reason}));
+    const freeAgents=freeAgentUpgradeIdeas(week).slice(0,10).map(r=>({player:tradeCompactPlayer(getPlayer(r.playerId)),projectedWeekPoints:r.weeklyProjection,lineupGainIfAdded:r.lineupGain,dropCandidate:r.dropPlayerId?tradeCompactPlayer(getPlayer(r.dropPlayerId)):null,score:r.score,reason:r.reason}));
+    const matchup=typeof matchupAnalysis==='function'?matchupAnalysis(week):null;
+    const sim=matchup?.opponent&&typeof simulateWeeklyMatchup==='function'?simulateWeeklyMatchup(week,2500):null;
+    const bestLineup=typeof window.bestWeeklyLineup==='function'?window.bestWeeklyLineup(seasonRoster(mySlot()),week):null;
     const event=trade?{id:trade.id,teamA:{slot:trade.teamA,name:leagueTeamName(trade.teamA)},teamB:{slot:trade.teamB,name:leagueTeamName(trade.teamB)},teamAToTeamB:(trade.aToB||[]).map(id=>tradeCompactPlayer(getPlayer(id))),teamBToTeamA:(trade.bToA||[]).map(id=>tradeCompactPlayer(getPlayer(id))),notes:trade.notes||'',completedAt:trade.createdAt}:null;
     const involvedSlots=trade?[trade.teamA,trade.teamB]:focusTarget?[ownerSlotOf(focusTarget.id)]:[];
-    return{mode:'trade',week,league:{name:state.settings.leagueName,teams:state.settings.teams,scoring:state.settings.scoring,roster:state.settings.roster},myTeam:{slot:mySlot(),name:leagueTeamName(mySlot()),roster:seasonRoster(mySlot()).map(tradeCompactPlayer)},completedTrade:event,focusTarget:focusTarget?{player:tradeCompactPlayer(focusTarget),currentOwnerSlot:ownerSlotOf(focusTarget.id),currentOwnerName:leagueTeamName(ownerSlotOf(focusTarget.id))}:null,involvedTeamRosters:[...new Set(involvedSlots.filter(Boolean))].map(slot=>({slot,name:leagueTeamName(slot),roster:seasonRoster(slot).map(tradeCompactPlayer)})),currentAcquisitionBoard:recommendations,nflWeek:state.nflWeeks?.[String(week)]||null,instruction:trade&&[trade.teamA,trade.teamB].includes(mySlot())?'Evaluate the completed trade for my team, including what I gained/lost and what move should follow.':focusTarget?'Evaluate whether this specific target is worth acquiring for my roster and what type of offer is justified from the supplied league data.':'A trade occurred between other teams. Assess whether any moved player or newly changed roster situation creates an acquisition opportunity for my team.'};
+    return{mode:intent==='weekly-moves'?'weeklyTradeAndWaiverPlan':'trade',week,league:{name:state.settings.leagueName,teams:state.settings.teams,scoring:state.settings.scoring,roster:state.settings.roster},myTeam:{slot:mySlot(),name:leagueTeamName(mySlot()),roster:seasonRoster(mySlot()).map(tradeCompactPlayer),bestLegalLineup:bestLineup?{projectedPoints:Number(bestLineup.total.toFixed(2)),starters:(bestLineup.assignments||[]).filter(x=>x.player).map(x=>({slot:x.slot.label,player:tradeCompactPlayer(x.player),weekProjection:x.weekly?Number(Number(x.weekly.adjusted||0).toFixed(2)):null}))}:null},weeklyMatchup:matchup?{opponentSlot:matchup.opponent||null,opponentName:matchup.opponent?leagueTeamName(matchup.opponent):null,myRosterProjection:Number(Number(matchup.myScore||0).toFixed(2)),opponentRosterProjection:Number(Number(matchup.theirScore||0).toFixed(2)),simulation:sim?{runs:sim.runs,myMean:Number(sim.myMean.toFixed(2)),opponentMean:Number(sim.opponentMean.toFixed(2)),winProbability:Number(sim.winProbability.toFixed(4))}:null}:null,completedTrade:event,focusTarget:focusTarget?{player:tradeCompactPlayer(focusTarget),currentOwnerSlot:ownerSlotOf(focusTarget.id),currentOwnerName:leagueTeamName(ownerSlotOf(focusTarget.id))}:null,involvedTeamRosters:[...new Set(involvedSlots.filter(Boolean))].map(slot=>({slot,name:leagueTeamName(slot),roster:seasonRoster(slot).map(tradeCompactPlayer)})),currentAcquisitionBoard:recommendations,freeAgentUpgradeBoard:freeAgents,nflWeek:state.nflWeeks?.[String(week)]||null,instruction:intent==='weekly-moves'?'Create a prioritized action plan for this week. Compare free-agent adds/drops and trade targets against my current best legal lineup and weekly matchup. Put immediate waiver upgrades first, then trade targets with realistic offer ideas, and clearly say when holding is better. Use only supplied projections, rosters, ownership and matchup data.':trade&&[trade.teamA,trade.teamB].includes(mySlot())?'Evaluate the completed trade for my team, including what I gained/lost and what move should follow.':focusTarget?'Evaluate whether this specific target is worth acquiring for my roster and what type of offer is justified from the supplied data. Include whether a free-agent alternative is better for this week.':'A trade occurred between other teams. Assess whether any moved player, free agent, or newly changed roster situation creates an acquisition opportunity for my team.'};
   }
 
   async function callTradeAi(context){
@@ -332,6 +404,23 @@
     state.tradeTargetAnalyses[id]={text:'Analyzing target…',status:'loading',updatedAt:new Date().toISOString()};saveState();renderRecommendations();
     try{const text=await callTradeAi(tradeContext(null,p));state.tradeTargetAnalyses[id]={text,status:'done',updatedAt:new Date().toISOString()};saveState();renderRecommendations()}
     catch(e){state.tradeTargetAnalyses[id]={text:`AI analysis unavailable: ${e.message}`,status:'error',updatedAt:new Date().toISOString()};saveState();renderRecommendations()}
+  }
+
+  async function analyzeWeeklyMoves(){
+    const week=currentTradeWeek(),btn=document.getElementById('trade-ai-weekly'),out=document.getElementById('trade-weekly-ai-output');
+    if(btn){btn.disabled=true;btn.dataset.originalText=btn.dataset.originalText||btn.textContent;btn.textContent=`Analyzing Week ${week}…`}
+    if(out)out.innerHTML=`<div class="ai-note">Analyzing Week ${week} waivers, trade targets, lineup fit and matchup context…</div>`;
+    try{
+      if(typeof loadNflWeek==='function')await loadNflWeek(week,false);
+      const text=await callTradeAi(tradeContext(null,null,'weekly-moves'));
+      state.tradeWeeklyAi[String(week)]={text,status:'done',updatedAt:new Date().toISOString()};
+      saveState();renderWeeklyMoves();
+    }catch(e){
+      state.tradeWeeklyAi[String(week)]={text:`AI weekly plan unavailable: ${e.message}`,status:'error',updatedAt:new Date().toISOString()};
+      saveState();renderWeeklyMoves();
+    }finally{
+      const live=document.getElementById('trade-ai-weekly');if(live){live.disabled=false;live.textContent=live.dataset.originalText||'AI weekly plan'}
+    }
   }
 
   function undoTrade(id){
@@ -365,6 +454,7 @@
     document.getElementById('record-trade')?.addEventListener('click',recordTrade);
     document.getElementById('trade-add-player-btn')?.addEventListener('click',addPlayerToManagedRoster);
     document.getElementById('refresh-trade-recs')?.addEventListener('click',()=>{refreshTradeRecommendations({persist:true});renderRecommendations();toast('Trade targets refreshed')});
+    document.getElementById('trade-ai-weekly')?.addEventListener('click',()=>analyzeWeeklyMoves().catch(()=>{}));
     document.getElementById('view-trades')?.addEventListener('click',e=>{const drop=e.target.closest('[data-trade-drop]');if(drop)return dropPlayer(drop.dataset.tradeDrop,Number(drop.dataset.slot));const undo=e.target.closest('[data-undo-trade]');if(undo)return undoTrade(undo.dataset.undoTrade);const re=e.target.closest('[data-reanalyze-trade]');if(re)return analyzeRecordedTrade(re.dataset.reanalyzeTrade).catch(()=>{});const target=e.target.closest('[data-analyze-target]');if(target)return analyzeTarget(target.dataset.analyzeTarget).catch(()=>{})});
   }
 
@@ -374,4 +464,5 @@
   window.renderTradeCenter=renderTradeCenter;
   window.refreshTradeRecommendations=refreshTradeRecommendations;
   window.ownerSlotOf=ownerSlotOf;
+  window.freeAgentUpgradeIdeas=freeAgentUpgradeIdeas;
 })();

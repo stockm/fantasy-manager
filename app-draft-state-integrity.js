@@ -2,7 +2,7 @@
 // During a live draft, state.picks is the source of truth. Season/weekly roster
 // state from an earlier draft must never leak into draft recommendations or AI.
 function draftTotalPickCount(){return Math.max(1,Number(state.settings?.teams||14))*Math.max(1,Number(state.settings?.rounds||1))}
-function draftIsActive(){return (state.picks||[]).length<draftTotalPickCount()}
+function draftIsActive(){return !state.seasonRosterMode&&(state.picks||[]).length<draftTotalPickCount()}
 function currentDraftRosterIds(slot){return (state.picks||[]).filter(p=>Number(p.teamSlot)===Number(slot)&&!p.rosterRemoved).map(p=>p.playerId)}
 function draftRosterForSlot(slot){return currentDraftRosterIds(slot).map(getPlayer).filter(Boolean)}
 function sameIdList(a,b){if(!Array.isArray(a)||a.length!==b.length)return false;const x=[...a].map(String).sort(),y=[...b].map(String).sort();return x.every((v,i)=>v===y[i])}
