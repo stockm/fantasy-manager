@@ -134,7 +134,7 @@
     const name=typeof leagueTeamName==='function'?leagueTeamName(slot):`Team ${slot}`;
     refreshAfterMove(`${player.name} added to ${name} (${current.length+1}/${limit})`);
   }
-  function applyRecommendedRosterMove({addId,dropId='',slot=mySlot()}={}){
+  function applyRecommendedRosterMove({addId,dropId='',slot=mySlot(),onConfirmed=null}={}){
     if(!ensureSeasonMode())return false;
     const addPlayer=getPlayer(addId);if(!addPlayer)return toast('Recommended player not found','error'),false;
     const targetSlot=Number(slot)||mySlot(),current=rosterIds(targetSlot),teamName=typeof leagueTeamName==='function'?leagueTeamName(targetSlot):`Team ${targetSlot}`;
@@ -151,6 +151,7 @@
         movePlayer(dropPlayer.id,null);
         movePlayer(addPlayer.id,targetSlot);
         refreshAfterMove(`${addPlayer.name} added; ${dropPlayer.name} removed`);
+        onConfirmed?.();
       }});
       return false;
     }
@@ -159,6 +160,7 @@
     showRecommendationConfirm({addPlayer,teamName,onConfirm:()=>{
       movePlayer(addPlayer.id,targetSlot);
       refreshAfterMove(`${addPlayer.name} added to ${teamName} (${current.length+1}/${limit})`);
+      onConfirmed?.();
     }});
     return false;
   }
