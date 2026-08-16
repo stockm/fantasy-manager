@@ -29,11 +29,18 @@ function legalStarterPlayers(players,week){
   }catch(e){console.warn('Weekly lineup simulation fell back to full roster',e);return players}
 }
 function seededNormal(){let spare=null;return()=>{if(spare!==null){const x=spare;spare=null;return x}let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();const m=Math.sqrt(-2*Math.log(u)),a=2*Math.PI*v;spare=m*Math.sin(a);return m*Math.cos(a)}}
+function simulationInputs(players,week){return players.map(p=>{const mean=Number(adjustedWeeklyProjection(p,week).adjusted||0);return{mean,sd:Math.max(2,mean*.28)}})}
 function simulateWeeklyMatchup(week,runs=10000){
   const a=matchupAnalysis(week);if(!a?.opponent)return null;
-  const mine=legalStarterPlayers(a.mine,week),theirs=legalStarterPlayers(a.theirs,week),rand=seededNormal(),myMean=rosterWeeklyMean(mine,week),oppMean=rosterWeeklyMean(theirs,week);
+  const mine=legalStarterPlayers(a.mine,week),theirs=legalStarterPlayers(a.theirs,week),myInputs=simulationInputs(mine,week),oppInputs=simulationInputs(theirs,week),rand=seededNormal();
+  const myMean=myInputs.reduce((s,x)=>s+x.mean,0),oppMean=oppInputs.reduce((s,x)=>s+x.mean,0);
   let wins=0,ties=0,myTotal=0,oppTotal=0;
-  for(let i=0;i<runs;i++){let me=0,them=0;mine.forEach(p=>{const x=adjustedWeeklyProjection(p,week).adjusted;me+=Math.max(0,x+rand()*Math.max(2,x*.28))});theirs.forEach(p=>{const x=adjustedWeeklyProjection(p,week).adjusted;them+=Math.max(0,x+rand()*Math.max(2,x*.28))});myTotal+=me;oppTotal+=them;if(me>them)wins++;else if(me===them)ties++}
+  for(let i=0;i<runs;i++){
+    let me=0,them=0;
+    for(const x of myInputs)me+=Math.max(0,x.mean+rand()*x.sd);
+    for(const x of oppInputs)them+=Math.max(0,x.mean+rand()*x.sd);
+    myTotal+=me;oppTotal+=them;if(me>them)wins++;else if(me===them)ties++;
+  }
   return{runs,myMean:myTotal/runs,opponentMean:oppTotal/runs,winProbability:(wins+ties*.5)/runs,rawMyMean:myMean,rawOpponentMean:oppMean,starterCountMine:mine.length,starterCountOpponent:theirs.length,method:'Monte Carlo over best legal starting lineups',varianceModel:'Independent normal noise per starter; standard deviation = max(2, adjusted projection × 0.28); scores floored at zero',projectionQuality:state.nflWeeks?.[String(week)]?.projectionStatus||null}
 }
 function weeklyPlayerContext(p,week){const x=adjustedWeeklyProjection(p,week);return{...compactPlayer(p),nflOpponent:x.opponent,home:x.home,gameTime:x.gameTime,baseWeeklyProjection:Number(x.base.toFixed(2)),adjustedWeeklyProjection:Number(x.adjusted.toFixed(2)),matchupFactor:Number(x.factor.toFixed(3)),projectionSource:x.projectionSource||null,realWeeklyProjection:!!x.realProjection}}
