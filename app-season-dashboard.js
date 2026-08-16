@@ -14,6 +14,7 @@
   function topFreeAgents(limit=4){
     const owned=new Set(Object.values(state.teamRosters||{}).flat());
     (state.picks||[]).forEach(p=>owned.add(p.playerId));
+    (state.manualRosterIds||[]).forEach(id=>owned.add(id));
     return(state.players||[]).filter(p=>!owned.has(p.id)&&!/(OUT|IR|SUSP)/i.test(String(p.status||''))).sort((a,b)=>{
       const ar=num(a.rank,99999),br=num(b.rank,99999);if(ar!==br)return ar-br;return val(b)-val(a)
     }).slice(0,limit);
@@ -51,4 +52,5 @@
   }
   renderDashboard=function(){if(!complete())return baseRenderDashboard();renderSeason()};
   window.renderSeasonDashboard=renderSeason;
+  if(document.getElementById('view-dashboard')?.classList.contains('active'))setTimeout(()=>renderDashboard(),0);
 })();
