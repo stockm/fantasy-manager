@@ -71,18 +71,18 @@
 
           <section class="landing-section auth-stage" id="auth-panel">
             <div class="auth-story"><div class="auth-step-label">SETUP · 1 / 2</div><div class="auth-progress"><i class="done"></i><i></i></div><span class="section-kicker">YOUR COMMAND CENTER STARTS HERE</span><h2>Build the league model once. Use it all season.</h2><p>Create your account or sign back in. Your authenticated league state stays in Firestore and follows you between sessions.</p><div class="auth-proof-grid"><div><strong>01</strong><span>Account</span></div><div><strong>02</strong><span>League setup</span></div><div><strong>03</strong><span>Draft + season</span></div></div></div>
-            <section class="auth-card modern-auth-card">
+            <form class="auth-card modern-auth-card" id="auth-form">
               <div class="auth-card-top"><span id="auth-panel-eyebrow">WELCOME BACK</span><div class="auth-secure">SECURE</div></div>
               <h2 id="auth-title">Return to your war room.</h2><p class="auth-sub" id="auth-panel-sub">Sign in to restore your league, rosters, trades and weekly intelligence.</p>
-              <div class="auth-mode-tabs"><button class="auth-mode-tab active" id="premium-signin-tab">SIGN IN</button><button class="auth-mode-tab" id="premium-register-tab">REGISTER</button></div>
+              <div class="auth-mode-tabs"><button class="auth-mode-tab active" id="premium-signin-tab" type="button">SIGN IN</button><button class="auth-mode-tab" id="premium-register-tab" type="button">REGISTER</button></div>
               <label>Email address<input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com"></label>
               <label>Password<input id="auth-password" type="password" autocomplete="current-password" placeholder="••••••••"></label>
-              <div class="auth-reset-row"><button class="auth-link" id="auth-reset">Forgot password?</button></div>
-              <button class="auth-primary" id="auth-submit">Enter war room <span>→</span></button>
+              <div class="auth-reset-row"><button class="auth-link" id="auth-reset" type="button">Forgot password?</button></div>
+              <button class="auth-primary" id="auth-submit" type="submit">Enter war room <span>→</span></button>
               <div id="auth-message"></div>
               <div class="auth-divider"><span>FANTASY GM</span></div>
-              <p class="auth-switch-row"><span id="auth-switch-copy">New here?</span> <button class="auth-link" id="auth-switch">Create account</button></p>
-            </section>
+              <p class="auth-switch-row"><span id="auth-switch-copy">New here?</span> <button class="auth-link" id="auth-switch" type="button">Create account</button></p>
+            </form>
           </section>
 
           <section class="landing-final"><span>READY FOR DRAFT NIGHT?</span><h2>Stop managing from a generic player list.</h2><button class="lime-action" id="final-register">Create my Fantasy GM <span>→</span></button></section>
@@ -90,7 +90,7 @@
         <footer class="landing-footer"><div class="landing-brand static"><span class="brand-mark">FG</span><span>FANTASY <b>GM</b></span></div><p>League-specific fantasy football intelligence from draft night through the playoffs.</p></footer>
       </div>`;
 
-    document.getElementById('auth-submit').onclick=()=>authAction(authMode);
+    document.getElementById('auth-form')?.addEventListener('submit',event=>{event.preventDefault();authAction(authMode)});
     document.getElementById('auth-switch').onclick=()=>{toggleAuthMode();syncMode()};
     document.getElementById('auth-reset').onclick=()=>authAction('reset');
     document.getElementById('premium-signin-tab').onclick=()=>setMode('signin');

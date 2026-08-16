@@ -51,6 +51,7 @@ Useful runtime environment variables:
 - `OPENAI_MODEL`, default `gpt-5.6`
 - `AI_DAILY_LIMIT`, default `60`
 - `FREE_DAILY_AI_TOKENS`, default inherits `AI_DAILY_LIMIT` or `60`
+- `STRIPE_PRODUCT_TAX_CODE`, default `txcd_10105001` for AIaaS personal-use token packs; confirm the correct Stripe tax classification for production
 - `SCREENSHOT_IMPORT_DAILY_LIMIT`, default `20`
 - `NFL_SEASON`, optional scheduled-cache season override
 - `NFL_CURRENT_WEEK`, optional scheduled-cache week override

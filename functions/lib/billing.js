@@ -7,6 +7,7 @@ const { HttpError, requireAuthenticatedUser, sendHttpError, utcDayKey } = requir
 const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 const FREE_DAILY_AI_TOKENS = Number(process.env.FREE_DAILY_AI_TOKENS || process.env.AI_DAILY_LIMIT || 60);
+const STRIPE_PRODUCT_TAX_CODE = process.env.STRIPE_PRODUCT_TAX_CODE || 'txcd_10105001';
 
 const TOKEN_PACKS = [
   { id: 'starter', name: 'Starter Pack', tokens: 50, unitAmount: 499, badge: 'Best for testing' },
@@ -116,6 +117,7 @@ const billingCheckout = onRequest({ secrets: [STRIPE_SECRET_KEY], timeoutSeconds
           unit_amount: pack.unitAmount,
           product_data: {
             name: `${pack.name} - ${pack.tokens} AI tokens`,
+            tax_code: STRIPE_PRODUCT_TAX_CODE,
             metadata: { packId: pack.id, tokens: String(pack.tokens) }
           }
         }
@@ -125,6 +127,10 @@ const billingCheckout = onRequest({ secrets: [STRIPE_SECRET_KEY], timeoutSeconds
   } catch (error) {
     const handled = sendHttpError(res, error);
     if (handled) return handled;
+    if (error?.type === 'StripeInvalidRequestError') {
+      console.warn('billingCheckout Stripe request rejected', error?.message || error);
+      return res.status(400).json({ error: error.message || 'Checkout request was rejected by Stripe' });
+    }
     console.error('billingCheckout failure', error);
     return res.status(500).json({ error: 'Checkout could not be started' });
   }
