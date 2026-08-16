@@ -7,3 +7,4 @@ exports.nflWeek = require('./nfl/week').nflWeek;
 exports.screenshotImport = require('./screenshot-import').screenshotImport;
 exports.precomputeFantasyCaches = require('./cache/derived').precomputeFantasyCaches;
 exports.refreshDerivedCache = require('./cache/derived').refreshDerivedCache;
+exports.refreshFantasyCacheOnStateWrite = require('./cache/on-write').refreshFantasyCacheOnStateWrite;
