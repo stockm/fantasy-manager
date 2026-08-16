@@ -197,14 +197,47 @@
     return state.tradeRecommendations;
   }
 
-  function tradeCompactPlayer(p){
-    if(!p)return null;
-    const base={name:p.name,position:posKey(p),nflTeam:p.team||'',rank:num(p.rank),adp:num(p.adp),projection:num(p.projection),status:p.status||'',tradeValue:Number(playerTradeValue(p).toFixed(2))};
-    const week=Math.max(1,Math.min(18,Number(state.currentWeek)||Number(document.getElementById('lineup-week')?.value)||Number(document.getElementById('matchup-week')?.value)||1));
-    if(typeof weeklyPlayerContext==='function'){
-      try{base.weekContext=weeklyPlayerContext(p,week)}catch(_){/* no-op */}
+  function compactTradeNflWeek(week){
+    if(typeof compactNflWeek==='function')return compactNflWeek(week);
+    const raw=state.nflWeeks?.[String(week)]||null;if(!raw)return null;
+    const ps=raw.projectionStatus||{};
+    return{season:raw.season||state.settings?.season||null,week:Number(raw.week)||Number(week),source:raw.source||'',fetchedAt:raw.fetchedAt||'',projectionStatus:ps?{available:!!ps.available,provider:ps.provider||'',count:Number(ps.count)||0,matchedPlayers:Number(ps.matchedPlayers)||0,scoring:ps.scoring||'',fetchedAt:ps.fetchedAt||'',error:ps.error||''}:null,games:(raw.games||[]).map(g=>({home:g.home,away:g.away,date:g.date||'',status:g.status||'',venue:g.venue||'',indoor:g.indoor??null,neutralSite:!!g.neutralSite,weather:g.weather||'',temperature:g.temperature??null,wind:g.wind??null,overUnder:g.overUnder??null,spread:g.spread??null}))};
+  }
+
+  function tradeWeekContext(p,week){
+    let x=null;
+    if(typeof adjustedWeeklyProjection==='function'){
+      try{x=adjustedWeeklyProjection(p,week)}catch(_){x=null}
     }
+    if(!x&&typeof weeklyPlayerContext==='function'){
+      try{x=weeklyPlayerContext(p,week)}catch(_){x=null}
+    }
+    if(!x)return null;
+    const base=x.base??x.baseWeeklyProjection,adjusted=x.adjusted??x.adjustedWeeklyProjection;
+    return{week,baseWeekProjection:num(base),adjustedWeekProjection:num(adjusted),matchupFactor:num(x.factor??x.matchupFactor),projectionSource:x.projectionSource||'',realWeeklyProjection:!!(x.realProjection||x.realWeeklyProjection),nflOpponent:x.opponent||x.nflOpponent||null,home:x.home??null,bye:!!x.bye,gameTime:x.gameTime||null,status:x.status||p.status||'',defenseVsPositionFactor:num(x.defenseVsPositionFactor??x.factors?.defenseVsPosition),overUnder:num(x.overUnder),spread:num(x.spread),wind:num(x.wind),weather:x.weather||null};
+  }
+
+  function tradeCompactPlayer(p,options={}){
+    if(!p)return null;
+    const opts=typeof options==='number'?{week:options}:options;
+    const week=Math.max(1,Math.min(18,Number(opts.week)||Number(state.currentWeek)||Number(document.getElementById('lineup-week')?.value)||Number(document.getElementById('matchup-week')?.value)||1));
+    const base={name:p.name,position:posKey(p),nflTeam:p.team||'',rank:num(p.rank),adp:num(p.adp),seasonProjection:num(p.projection),status:p.status||'',tradeValue:Number(playerTradeValue(p).toFixed(2))};
+    if(opts.includeWeek!==false)base.weekContext=tradeWeekContext(p,week);
     return base;
+  }
+
+  function fitTradeAiContext(context){
+    const withBudget=ctx=>{ctx.contextBytes=JSON.stringify(ctx).length;return ctx};
+    if(JSON.stringify(context).length<=175000)return withBudget(context);
+    context.contextTrimmed=true;
+    context.currentAcquisitionBoard=(context.currentAcquisitionBoard||[]).slice(0,8);
+    context.freeAgentUpgradeBoard=(context.freeAgentUpgradeBoard||[]).slice(0,8);
+    context.involvedTeamRosters=(context.involvedTeamRosters||[]).map(team=>({...team,roster:(team.roster||[]).slice(0,16)}));
+    if(JSON.stringify(context).length<=175000)return withBudget(context);
+    if(context.myTeam?.roster)context.myTeam.roster=context.myTeam.roster.slice().sort((a,b)=>Number(b.tradeValue||0)-Number(a.tradeValue||0)).slice(0,18);
+    if(JSON.stringify(context).length<=175000)return withBudget(context);
+    if(context.nflWeek?.games)context.nflWeek.games=context.nflWeek.games.map(g=>({home:g.home,away:g.away,date:g.date,status:g.status,overUnder:g.overUnder,spread:g.spread,wind:g.wind,weather:g.weather}));
+    return withBudget(context);
   }
 
   function installTradeUI(){
@@ -377,14 +410,14 @@
   function tradeContext(trade,focusTarget=null,intent='trade'){
     refreshTradeRecommendations();
     const week=currentTradeWeek();
-    const recommendations=(state.tradeRecommendations||[]).slice(0,10).map(r=>({player:tradeCompactPlayer(getPlayer(r.playerId)),ownerTeam:leagueTeamName(r.ownerSlot),ownerSlot:r.ownerSlot,acquisitionScore:r.score,upgradeVsCurrentDepth:r.upgrade,reason:r.reason}));
-    const freeAgents=freeAgentUpgradeIdeas(week).slice(0,10).map(r=>({player:tradeCompactPlayer(getPlayer(r.playerId)),projectedWeekPoints:r.weeklyProjection,lineupGainIfAdded:r.lineupGain,dropCandidate:r.dropPlayerId?tradeCompactPlayer(getPlayer(r.dropPlayerId)):null,score:r.score,reason:r.reason}));
+    const recommendations=(state.tradeRecommendations||[]).slice(0,8).map(r=>({player:tradeCompactPlayer(getPlayer(r.playerId),{week}),ownerTeam:leagueTeamName(r.ownerSlot),ownerSlot:r.ownerSlot,acquisitionScore:r.score,upgradeVsCurrentDepth:r.upgrade,reason:r.reason}));
+    const freeAgents=freeAgentUpgradeIdeas(week).slice(0,8).map(r=>({player:tradeCompactPlayer(getPlayer(r.playerId),{week}),projectedWeekPoints:r.weeklyProjection,lineupGainIfAdded:r.lineupGain,dropCandidate:r.dropPlayerId?tradeCompactPlayer(getPlayer(r.dropPlayerId),{week}):null,score:r.score,reason:r.reason}));
     const matchup=typeof matchupAnalysis==='function'?matchupAnalysis(week):null;
     const sim=matchup?.opponent&&typeof simulateWeeklyMatchup==='function'?simulateWeeklyMatchup(week,2500):null;
     const bestLineup=typeof window.bestWeeklyLineup==='function'?window.bestWeeklyLineup(seasonRoster(mySlot()),week):null;
-    const event=trade?{id:trade.id,teamA:{slot:trade.teamA,name:leagueTeamName(trade.teamA)},teamB:{slot:trade.teamB,name:leagueTeamName(trade.teamB)},teamAToTeamB:(trade.aToB||[]).map(id=>tradeCompactPlayer(getPlayer(id))),teamBToTeamA:(trade.bToA||[]).map(id=>tradeCompactPlayer(getPlayer(id))),notes:trade.notes||'',completedAt:trade.createdAt}:null;
+    const event=trade?{id:trade.id,teamA:{slot:trade.teamA,name:leagueTeamName(trade.teamA)},teamB:{slot:trade.teamB,name:leagueTeamName(trade.teamB)},teamAToTeamB:(trade.aToB||[]).map(id=>tradeCompactPlayer(getPlayer(id),{week})),teamBToTeamA:(trade.bToA||[]).map(id=>tradeCompactPlayer(getPlayer(id),{week})),notes:trade.notes||'',completedAt:trade.createdAt}:null;
     const involvedSlots=trade?[trade.teamA,trade.teamB]:focusTarget?[ownerSlotOf(focusTarget.id)]:[];
-    return{mode:intent==='weekly-moves'?'weeklyTradeAndWaiverPlan':'trade',week,league:{name:state.settings.leagueName,teams:state.settings.teams,scoring:state.settings.scoring,roster:state.settings.roster},myTeam:{slot:mySlot(),name:leagueTeamName(mySlot()),roster:seasonRoster(mySlot()).map(tradeCompactPlayer),bestLegalLineup:bestLineup?{projectedPoints:Number(bestLineup.total.toFixed(2)),starters:(bestLineup.assignments||[]).filter(x=>x.player).map(x=>({slot:x.slot.label,player:tradeCompactPlayer(x.player),weekProjection:x.weekly?Number(Number(x.weekly.adjusted||0).toFixed(2)):null}))}:null},weeklyMatchup:matchup?{opponentSlot:matchup.opponent||null,opponentName:matchup.opponent?leagueTeamName(matchup.opponent):null,myRosterProjection:Number(Number(matchup.myScore||0).toFixed(2)),opponentRosterProjection:Number(Number(matchup.theirScore||0).toFixed(2)),simulation:sim?{runs:sim.runs,myMean:Number(sim.myMean.toFixed(2)),opponentMean:Number(sim.opponentMean.toFixed(2)),winProbability:Number(sim.winProbability.toFixed(4))}:null}:null,completedTrade:event,focusTarget:focusTarget?{player:tradeCompactPlayer(focusTarget),currentOwnerSlot:ownerSlotOf(focusTarget.id),currentOwnerName:leagueTeamName(ownerSlotOf(focusTarget.id))}:null,involvedTeamRosters:[...new Set(involvedSlots.filter(Boolean))].map(slot=>({slot,name:leagueTeamName(slot),roster:seasonRoster(slot).map(tradeCompactPlayer)})),currentAcquisitionBoard:recommendations,freeAgentUpgradeBoard:freeAgents,nflWeek:state.nflWeeks?.[String(week)]||null,instruction:intent==='weekly-moves'?'Create a prioritized action plan for this week. Compare free-agent adds/drops and trade targets against my current best legal lineup and weekly matchup. Put immediate waiver upgrades first, then trade targets with realistic offer ideas, and clearly say when holding is better. Use only supplied projections, rosters, ownership and matchup data.':trade&&[trade.teamA,trade.teamB].includes(mySlot())?'Evaluate the completed trade for my team, including what I gained/lost and what move should follow.':focusTarget?'Evaluate whether this specific target is worth acquiring for my roster and what type of offer is justified from the supplied data. Include whether a free-agent alternative is better for this week.':'A trade occurred between other teams. Assess whether any moved player, free agent, or newly changed roster situation creates an acquisition opportunity for my team.'};
+    return fitTradeAiContext({mode:intent==='weekly-moves'?'weeklyTradeAndWaiverPlan':'trade',week,league:{name:state.settings.leagueName,teams:state.settings.teams,scoring:state.settings.scoring,roster:state.settings.roster},myTeam:{slot:mySlot(),name:leagueTeamName(mySlot()),roster:seasonRoster(mySlot()).map(p=>tradeCompactPlayer(p,{week})),bestLegalLineup:bestLineup?{projectedPoints:Number(bestLineup.total.toFixed(2)),starters:(bestLineup.assignments||[]).filter(x=>x.player).map(x=>({slot:x.slot.label,player:tradeCompactPlayer(x.player,{week,includeWeek:false}),weekContext:tradeWeekContext(x.player,week),weekProjection:x.weekly?Number(Number(x.weekly.adjusted||0).toFixed(2)):null}))}:null},weeklyMatchup:matchup?{opponentSlot:matchup.opponent||null,opponentName:matchup.opponent?leagueTeamName(matchup.opponent):null,myRosterProjection:Number(Number(matchup.myScore||0).toFixed(2)),opponentRosterProjection:Number(Number(matchup.theirScore||0).toFixed(2)),simulation:sim?{runs:sim.runs,myMean:Number(sim.myMean.toFixed(2)),opponentMean:Number(sim.opponentMean.toFixed(2)),winProbability:Number(sim.winProbability.toFixed(4))}:null}:null,completedTrade:event,focusTarget:focusTarget?{player:tradeCompactPlayer(focusTarget,{week}),currentOwnerSlot:ownerSlotOf(focusTarget.id),currentOwnerName:leagueTeamName(ownerSlotOf(focusTarget.id))}:null,involvedTeamRosters:[...new Set(involvedSlots.filter(Boolean))].map(slot=>({slot,name:leagueTeamName(slot),roster:seasonRoster(slot).map(p=>tradeCompactPlayer(p,{week}))})),currentAcquisitionBoard:recommendations,freeAgentUpgradeBoard:freeAgents,nflWeek:compactTradeNflWeek(week),instruction:intent==='weekly-moves'?'Create a prioritized action plan for this week. Compare free-agent adds/drops and trade targets against my current best legal lineup and weekly matchup. Put immediate waiver upgrades first, then trade targets with realistic offer ideas, and clearly say when holding is better. Use only supplied projections, rosters, ownership and matchup data.':trade&&[trade.teamA,trade.teamB].includes(mySlot())?'Evaluate the completed trade for my team, including what I gained/lost and what move should follow.':focusTarget?'Evaluate whether this specific target is worth acquiring for my roster and what type of offer is justified from the supplied data. Include whether a free-agent alternative is better for this week.':'A trade occurred between other teams. Assess whether any moved player, free agent, or newly changed roster situation creates an acquisition opportunity for my team.'});
   }
 
   async function callTradeAi(context){
