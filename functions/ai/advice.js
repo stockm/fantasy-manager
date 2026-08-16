@@ -16,6 +16,34 @@ function taskPrompt(task){
 function extractText(data){const found=[];const add=v=>{if(typeof v==='string'&&v.trim())found.push(v.trim())};add(data?.output_text);for(const item of data?.output||[]){add(item?.output_text);add(item?.text);for(const part of item?.content||[]){add(part?.text);add(part?.output_text);if(typeof part?.text==='object')add(part.text.value);if(typeof part?.content==='string')add(part.content)}}return[...new Set(found)].join('\n').trim()}
 function responseSummary(data){return{status:data?.status||null,incompleteReason:data?.incomplete_details?.reason||null,error:data?.error?.message||null,outputTypes:(data?.output||[]).map(x=>({type:x?.type||null,status:x?.status||null,contentTypes:(x?.content||[]).map(c=>c?.type||null)})),usage:data?.usage||null}}
 function flattenPlayers(value){if(Array.isArray(value))return value;if(value&&typeof value==='object')return Object.values(value).flatMap(v=>Array.isArray(v)?v:[v]);return []}
+function compactServerNflWeek(raw){
+  if(!raw||typeof raw!=='object')return null;
+  const ps=raw.projectionStatus||{};
+  return{season:raw.season||null,week:Number(raw.week)||null,source:raw.source||'',fetchedAt:raw.fetchedAt||'',projectionStatus:{available:!!ps.available,provider:ps.provider||'',count:Number(ps.count)||0,matchedPlayers:Number(ps.matchedPlayers)||0,scoring:ps.scoring||'',fetchedAt:ps.fetchedAt||'',error:ps.error||''},games:(raw.games||[]).map(g=>({home:g.home,away:g.away,date:g.date||'',status:g.status||'',venue:g.venue||'',indoor:g.indoor??null,neutralSite:!!g.neutralSite,weather:g.weather||'',temperature:g.temperature??null,wind:g.wind??null,overUnder:g.overUnder??null,spread:g.spread??null}))};
+}
+function compactServerPlayer(p){
+  if(!p||typeof p!=='object')return p;
+  const w=p.weekContext||p.week||{};
+  return{name:p.name||p.playerName||'',position:p.position||p.pos||'',nflTeam:p.nflTeam||p.team||'',rank:p.rank??null,adp:p.adp??null,seasonProjection:p.seasonProjection??p.projection??null,status:p.status||'',tradeValue:p.tradeValue??null,weekContext:w&&typeof w==='object'?{week:w.week??null,baseWeekProjection:w.baseWeekProjection??w.baseWeeklyProjection??null,adjustedWeekProjection:w.adjustedWeekProjection??w.adjustedWeeklyProjection??null,projectionSource:w.projectionSource||'',realWeeklyProjection:!!w.realWeeklyProjection,nflOpponent:w.nflOpponent||w.opponent||null,home:w.home??null,bye:!!w.bye,gameTime:w.gameTime||null,weather:w.weather||null,wind:w.wind??null,overUnder:w.overUnder??null,spread:w.spread??null}:null};
+}
+function trimContextForSize(context,max=220000){
+  let serialized=JSON.stringify(context);
+  if(serialized.length<=max)return{context,serialized,trimmed:false};
+  const trimmed=JSON.parse(serialized);
+  trimmed.serverContextTrimmed=true;
+  if(trimmed.nflWeek)trimmed.nflWeek=compactServerNflWeek(trimmed.nflWeek);
+  for(const key of ['currentAcquisitionBoard','freeAgentUpgradeBoard']){
+    if(Array.isArray(trimmed[key]))trimmed[key]=trimmed[key].slice(0,8).map(row=>({...row,player:compactServerPlayer(row.player),dropCandidate:compactServerPlayer(row.dropCandidate)}));
+  }
+  if(trimmed.myTeam){
+    if(Array.isArray(trimmed.myTeam.roster))trimmed.myTeam.roster=trimmed.myTeam.roster.slice(0,18).map(compactServerPlayer);
+    if(Array.isArray(trimmed.myTeam.bestLegalLineup?.starters))trimmed.myTeam.bestLegalLineup.starters=trimmed.myTeam.bestLegalLineup.starters.map(row=>({...row,player:compactServerPlayer(row.player)}));
+  }
+  if(Array.isArray(trimmed.involvedTeamRosters))trimmed.involvedTeamRosters=trimmed.involvedTeamRosters.map(team=>({...team,roster:(team.roster||[]).slice(0,16).map(compactServerPlayer)}));
+  if(Array.isArray(trimmed.allLeagueRosters))trimmed.allLeagueRosters=trimmed.allLeagueRosters.map(team=>({...team,players:(team.players||[]).slice(0,18).map(compactServerPlayer)}));
+  serialized=JSON.stringify(trimmed);
+  return{context:trimmed,serialized,trimmed:true};
+}
 function weeklyContextStatus(context){
   const schedule=context?.nflWeek||context?.weekContext||context?.schedule||null;
   const games=Array.isArray(schedule?.games)?schedule.games:[];
@@ -39,13 +67,14 @@ const aiAdvice=onRequest({secrets:[OPENAI_API_KEY],timeoutSeconds:90,memory:'256
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
   const{task,context}=req.body||{};
   if(!['draft','weekly','lineup','trade'].includes(task)||!context||typeof context!=='object')return res.status(400).json({error:'Invalid request'});
-  const weeklyStatus=['weekly','lineup'].includes(task)?weeklyContextStatus(context):null;
-  const serialized=JSON.stringify(context);
-  if(serialized.length>220000)return res.status(413).json({error:'Analysis context too large'});
+  const trimmed=trimContextForSize(context);
+  const aiContext=trimmed.context,serialized=trimmed.serialized;
+  if(serialized.length>220000)return res.status(413).json({error:'Analysis context too large',bytes:serialized.length,limit:220000});
+  const weeklyStatus=['weekly','lineup'].includes(task)||(task==='trade'&&/weekly/i.test(String(aiContext.mode||'')))?weeklyContextStatus(aiContext):null;
   try{
     const user=await requireAuthenticatedUser(req);
     await enforceDailyQuota(user.uid,'aiAdvice',DAILY_LIMIT);
-    const prompt=`${taskPrompt(task)}${weeklyStatus?`\nWEEKLY DATA STATUS: ${JSON.stringify(weeklyStatus)}. If hasProjectionData is true, the supplied values include real week-specific provider projections and must not be described as season/17 estimates. If hasSimulation is true, use the supplied simulation and its stated method; do not claim simulation metadata is unavailable when method/runs are present. If projection inputs are absent, state that clearly.`:''}\n\nLEAGUE DATA:\n${serialized}`;
+    const prompt=`${taskPrompt(task)}${trimmed.trimmed?'\nCONTEXT NOTICE: The request payload was compacted server-side to remove raw bulk data while preserving rankings, rosters, projections, matchups, simulations and recommendation boards.':''}${weeklyStatus?`\nWEEKLY DATA STATUS: ${JSON.stringify(weeklyStatus)}. If hasProjectionData is true, the supplied values include real week-specific provider projections and must not be described as season/17 estimates. If hasSimulation is true, use the supplied simulation and its stated method; do not claim simulation metadata is unavailable when method/runs are present. If projection inputs are absent, state that clearly.`:''}\n\nLEAGUE DATA:\n${serialized}`;
     const first=await callResponses(prompt,6000);
     if(first.parseError)return res.status(502).json({error:'AI service returned an unreadable response'});
     const response=first.response,data=first.data;
