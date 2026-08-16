@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "season": 2026,
-  "generatedAt": "2026-08-16T10:48:49.832904+00:00",
+  "generatedAt": "2026-08-16T11:56:55.188261+00:00",
   "projectionDate": "Aug 16, 2026",
   "projectionAnchorCount": 60,
   "projectionEstimateCount": 144,
@@ -54,8 +54,8 @@
       "adpLow": 4.0,
       "adpStdev": 0.5,
       "timesDrafted": 41,
-      "projection": 281.3,
-      "sourceProjection": 281.3,
+      "projection": 294.7,
+      "sourceProjection": 294.4,
       "projectionQuality": "consensus-custom-yahoo"
     },
     {
@@ -306,7 +306,7 @@
       "adpLow": 30.0,
       "adpStdev": 2.7,
       "timesDrafted": 137,
-      "projection": 211.9,
+      "projection": 210.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -348,7 +348,7 @@
       "adpLow": 31.0,
       "adpStdev": 2.7,
       "timesDrafted": 87,
-      "projection": 209.2,
+      "projection": 207.3,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -362,7 +362,7 @@
       "adpLow": 31.0,
       "adpStdev": 2.5,
       "timesDrafted": 52,
-      "projection": 206.9,
+      "projection": 204.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -390,7 +390,7 @@
       "adpLow": 44.0,
       "adpStdev": 3.5,
       "timesDrafted": 284,
-      "projection": 204.7,
+      "projection": 202.3,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -446,7 +446,7 @@
       "adpLow": 42.0,
       "adpStdev": 3.2,
       "timesDrafted": 111,
-      "projection": 202.7,
+      "projection": 200.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -460,7 +460,7 @@
       "adpLow": 44.0,
       "adpStdev": 3.6,
       "timesDrafted": 263,
-      "projection": 200.8,
+      "projection": 198.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -502,7 +502,7 @@
       "adpLow": 43.0,
       "adpStdev": 4.2,
       "timesDrafted": 122,
-      "projection": 199.1,
+      "projection": 196.2,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -530,7 +530,7 @@
       "adpLow": 53.0,
       "adpStdev": 4.5,
       "timesDrafted": 114,
-      "projection": 197.5,
+      "projection": 194.5,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -544,7 +544,7 @@
       "adpLow": 54.0,
       "adpStdev": 5.3,
       "timesDrafted": 372,
-      "projection": 196.0,
+      "projection": 192.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -558,7 +558,7 @@
       "adpLow": 48.0,
       "adpStdev": 3.6,
       "timesDrafted": 109,
-      "projection": 194.6,
+      "projection": 191.3,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -572,7 +572,7 @@
       "adpLow": 50.0,
       "adpStdev": 4.2,
       "timesDrafted": 75,
-      "projection": 193.2,
+      "projection": 189.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -600,7 +600,7 @@
       "adpLow": 63.0,
       "adpStdev": 4.8,
       "timesDrafted": 357,
-      "projection": 191.9,
+      "projection": 188.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -656,7 +656,7 @@
       "adpLow": 58.0,
       "adpStdev": 4.1,
       "timesDrafted": 120,
-      "projection": 190.7,
+      "projection": 187.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -670,7 +670,7 @@
       "adpLow": 60.0,
       "adpStdev": 4.9,
       "timesDrafted": 168,
-      "projection": 189.6,
+      "projection": 185.9,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -684,7 +684,7 @@
       "adpLow": 65.0,
       "adpStdev": 6.0,
       "timesDrafted": 280,
-      "projection": 188.5,
+      "projection": 184.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -712,7 +712,7 @@
       "adpLow": 68.0,
       "adpStdev": 5.7,
       "timesDrafted": 302,
-      "projection": 187.4,
+      "projection": 183.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -768,7 +768,7 @@
       "adpLow": 71.0,
       "adpStdev": 6.6,
       "timesDrafted": 149,
-      "projection": 186.4,
+      "projection": 182.5,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -782,7 +782,7 @@
       "adpLow": 65.0,
       "adpStdev": 4.7,
       "timesDrafted": 44,
-      "projection": 185.4,
+      "projection": 181.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -838,7 +838,7 @@
       "adpLow": 78.0,
       "adpStdev": 6.5,
       "timesDrafted": 306,
-      "projection": 184.5,
+      "projection": 180.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -866,7 +866,7 @@
       "adpLow": 78.0,
       "adpStdev": 6.6,
       "timesDrafted": 353,
-      "projection": 183.6,
+      "projection": 179.5,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -894,7 +894,7 @@
       "adpLow": 77.0,
       "adpStdev": 6.3,
       "timesDrafted": 131,
-      "projection": 182.8,
+      "projection": 178.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -908,7 +908,7 @@
       "adpLow": 80.0,
       "adpStdev": 7.3,
       "timesDrafted": 182,
-      "projection": 182.0,
+      "projection": 177.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -922,7 +922,7 @@
       "adpLow": 80.0,
       "adpStdev": 7.4,
       "timesDrafted": 168,
-      "projection": 181.2,
+      "projection": 176.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -936,7 +936,7 @@
       "adpLow": 81.0,
       "adpStdev": 6.7,
       "timesDrafted": 285,
-      "projection": 180.4,
+      "projection": 176.0,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1006,7 +1006,7 @@
       "adpLow": 92.0,
       "adpStdev": 8.0,
       "timesDrafted": 248,
-      "projection": 179.6,
+      "projection": 175.2,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1062,7 +1062,7 @@
       "adpLow": 89.0,
       "adpStdev": 7.3,
       "timesDrafted": 272,
-      "projection": 178.9,
+      "projection": 174.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1118,7 +1118,7 @@
       "adpLow": 102.0,
       "adpStdev": 9.4,
       "timesDrafted": 221,
-      "projection": 178.2,
+      "projection": 173.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1146,7 +1146,7 @@
       "adpLow": 108.0,
       "adpStdev": 10.1,
       "timesDrafted": 189,
-      "projection": 177.5,
+      "projection": 172.9,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1160,7 +1160,7 @@
       "adpLow": 99.0,
       "adpStdev": 7.4,
       "timesDrafted": 195,
-      "projection": 176.9,
+      "projection": 172.2,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1202,7 +1202,7 @@
       "adpLow": 104.0,
       "adpStdev": 7.9,
       "timesDrafted": 182,
-      "projection": 176.3,
+      "projection": 171.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1244,7 +1244,7 @@
       "adpLow": 113.0,
       "adpStdev": 10.4,
       "timesDrafted": 228,
-      "projection": 175.6,
+      "projection": 170.9,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1258,7 +1258,7 @@
       "adpLow": 101.0,
       "adpStdev": 9.1,
       "timesDrafted": 69,
-      "projection": 175.0,
+      "projection": 170.2,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1300,7 +1300,7 @@
       "adpLow": 104.0,
       "adpStdev": 7.2,
       "timesDrafted": 102,
-      "projection": 174.4,
+      "projection": 169.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1328,7 +1328,7 @@
       "adpLow": 112.0,
       "adpStdev": 9.1,
       "timesDrafted": 98,
-      "projection": 173.9,
+      "projection": 169.0,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1342,7 +1342,7 @@
       "adpLow": 111.0,
       "adpStdev": 9.7,
       "timesDrafted": 98,
-      "projection": 173.3,
+      "projection": 168.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1370,7 +1370,7 @@
       "adpLow": 113.0,
       "adpStdev": 10.0,
       "timesDrafted": 167,
-      "projection": 172.8,
+      "projection": 167.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1426,7 +1426,7 @@
       "adpLow": 124.0,
       "adpStdev": 10.3,
       "timesDrafted": 193,
-      "projection": 172.3,
+      "projection": 167.3,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1468,7 +1468,7 @@
       "adpLow": 115.0,
       "adpStdev": 8.5,
       "timesDrafted": 98,
-      "projection": 171.7,
+      "projection": 166.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1510,7 +1510,7 @@
       "adpLow": 123.0,
       "adpStdev": 13.4,
       "timesDrafted": 92,
-      "projection": 171.2,
+      "projection": 166.2,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1524,7 +1524,7 @@
       "adpLow": 117.0,
       "adpStdev": 8.4,
       "timesDrafted": 45,
-      "projection": 170.7,
+      "projection": 165.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1538,7 +1538,7 @@
       "adpLow": 125.0,
       "adpStdev": 10.0,
       "timesDrafted": 142,
-      "projection": 170.3,
+      "projection": 165.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1580,7 +1580,7 @@
       "adpLow": 120.0,
       "adpStdev": 7.1,
       "timesDrafted": 73,
-      "projection": 169.8,
+      "projection": 164.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1650,7 +1650,7 @@
       "adpLow": 137.0,
       "adpStdev": 9.6,
       "timesDrafted": 135,
-      "projection": 169.3,
+      "projection": 164.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1664,7 +1664,7 @@
       "adpLow": 113.0,
       "adpStdev": 1.9,
       "timesDrafted": 8,
-      "projection": 168.9,
+      "projection": 163.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1706,7 +1706,7 @@
       "adpLow": 145.0,
       "adpStdev": 11.0,
       "timesDrafted": 92,
-      "projection": 168.4,
+      "projection": 163.2,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1790,7 +1790,7 @@
       "adpLow": 149.0,
       "adpStdev": 12.4,
       "timesDrafted": 96,
-      "projection": 168.0,
+      "projection": 162.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1804,7 +1804,7 @@
       "adpLow": 139.0,
       "adpStdev": 9.3,
       "timesDrafted": 61,
-      "projection": 167.6,
+      "projection": 162.3,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1846,7 +1846,7 @@
       "adpLow": 145.0,
       "adpStdev": 9.5,
       "timesDrafted": 131,
-      "projection": 167.2,
+      "projection": 161.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1888,7 +1888,7 @@
       "adpLow": 150.0,
       "adpStdev": 20.7,
       "timesDrafted": 30,
-      "projection": 166.8,
+      "projection": 161.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1944,7 +1944,7 @@
       "adpLow": 150.0,
       "adpStdev": 9.8,
       "timesDrafted": 53,
-      "projection": 166.4,
+      "projection": 161.0,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1972,7 +1972,7 @@
       "adpLow": 152.0,
       "adpStdev": 10.3,
       "timesDrafted": 58,
-      "projection": 166.0,
+      "projection": 160.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2000,7 +2000,7 @@
       "adpLow": 149.0,
       "adpStdev": 6.9,
       "timesDrafted": 53,
-      "projection": 165.6,
+      "projection": 160.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2014,7 +2014,7 @@
       "adpLow": 149.0,
       "adpStdev": 10.2,
       "timesDrafted": 37,
-      "projection": 165.2,
+      "projection": 159.7,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2042,7 +2042,7 @@
       "adpLow": 171.0,
       "adpStdev": 13.8,
       "timesDrafted": 10,
-      "projection": 164.8,
+      "projection": 159.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2056,7 +2056,7 @@
       "adpLow": 153.0,
       "adpStdev": 8.6,
       "timesDrafted": 11,
-      "projection": 164.5,
+      "projection": 159.0,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2070,7 +2070,7 @@
       "adpLow": 173.0,
       "adpStdev": 15.8,
       "timesDrafted": 33,
-      "projection": 164.1,
+      "projection": 158.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2098,7 +2098,7 @@
       "adpLow": 179.0,
       "adpStdev": 16.0,
       "timesDrafted": 69,
-      "projection": 163.8,
+      "projection": 158.2,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2140,7 +2140,7 @@
       "adpLow": 178.0,
       "adpStdev": 17.9,
       "timesDrafted": 110,
-      "projection": 163.4,
+      "projection": 157.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2280,7 +2280,7 @@
       "adpLow": 176.0,
       "adpStdev": 13.1,
       "timesDrafted": 28,
-      "projection": 163.1,
+      "projection": 157.5,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2308,7 +2308,7 @@
       "adpLow": 180.0,
       "adpStdev": 18.5,
       "timesDrafted": 43,
-      "projection": 162.7,
+      "projection": 157.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2406,7 +2406,7 @@
       "adpLow": 180.0,
       "adpStdev": 17.1,
       "timesDrafted": 26,
-      "projection": 162.4,
+      "projection": 156.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2420,7 +2420,7 @@
       "adpLow": 179.0,
       "adpStdev": 14.0,
       "timesDrafted": 72,
-      "projection": 162.1,
+      "projection": 156.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2504,7 +2504,7 @@
       "adpLow": 178.0,
       "adpStdev": 12.8,
       "timesDrafted": 24,
-      "projection": 161.8,
+      "projection": 156.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2518,7 +2518,7 @@
       "adpLow": 180.0,
       "adpStdev": 20.8,
       "timesDrafted": 10,
-      "projection": 161.5,
+      "projection": 155.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2532,7 +2532,7 @@
       "adpLow": 178.0,
       "adpStdev": 12.3,
       "timesDrafted": 19,
-      "projection": 161.2,
+      "projection": 155.4,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2546,7 +2546,7 @@
       "adpLow": 178.0,
       "adpStdev": 9.2,
       "timesDrafted": 15,
-      "projection": 160.8,
+      "projection": 155.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2644,7 +2644,7 @@
       "adpLow": 180.0,
       "adpStdev": 16.9,
       "timesDrafted": 17,
-      "projection": 160.5,
+      "projection": 154.8,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2686,7 +2686,7 @@
       "adpLow": 196.0,
       "adpStdev": 19.8,
       "timesDrafted": 7,
-      "projection": 160.3,
+      "projection": 154.5,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2742,7 +2742,7 @@
       "adpLow": 199.0,
       "adpStdev": 18.4,
       "timesDrafted": 11,
-      "projection": 160.0,
+      "projection": 154.2,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
