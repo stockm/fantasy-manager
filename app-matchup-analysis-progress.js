@@ -30,7 +30,7 @@
       b.disabled=true;b.classList.add('mc-analyzing');
       b.innerHTML=`<span class="mc-spinner" aria-hidden="true"></span>Analyzing Week ${currentWeek()}…`;
       const out=aiOutput();
-      if(out)out.innerHTML=`<div class="mc-analysis-running"><i class="pulse"></i><div><strong>Analyzing Week ${currentWeek()}</strong><span>Checking your lineup, opponent, available players, trades and NFL matchup context…</span></div></div>`;
+      if(out)out.innerHTML=window.aiLoadingMarkup?window.aiLoadingMarkup(`Thinking through Week ${currentWeek()}`,'Checking your lineup, opponent, available players, trades and NFL matchup context.'): `<div class="mc-analysis-running"><i class="pulse"></i><div><strong>Analyzing Week ${currentWeek()}</strong><span>Checking your lineup, opponent, available players, trades and NFL matchup context...</span></div></div>`;
     }else{
       b.disabled=false;b.classList.remove('mc-analyzing');
       b.textContent=b.dataset.originalLabel||'Analyze my Week';
@@ -44,7 +44,7 @@
       if(!busy)return;
       const text=(out.textContent||'').trim();
       if(!text)return;
-      const stillWorking=/analyzing|checking your lineup/i.test(text);
+      const stillWorking=/analyzing|checking your lineup|thinking through|building|comparing/i.test(text);
       if(!stillWorking){setBusy(false);observer?.disconnect()}
     });
     observer.observe(out,{childList:true,subtree:true,characterData:true});

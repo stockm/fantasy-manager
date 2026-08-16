@@ -7,6 +7,9 @@
   }
 
   const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  window.aiLoadingMarkup=function(title='AI is thinking',detail='Building the best answer from your league context.'){
+    return `<div class="ai-thinking" role="status" aria-live="polite"><div class="ai-thinking-icon" aria-hidden="true"><span class="ai-node n1"></span><span class="ai-node n2"></span><span class="ai-node n3"></span><span class="ai-core"></span></div><div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></div></div>`;
+  };
   function inline(text){
     let s=escapeHtml(text);
     s=s.replace(/`([^`]+)`/g,'<code>$1</code>');
