@@ -5,6 +5,7 @@
   const draftTargetPicks=()=>leagueSize()*Math.max(1,Number(state.settings.rounds||1));
   const draftLogComplete=()=>Number((state.picks||[]).length)>=draftTargetPicks();
   const posKey=p=>{const x=String(primaryPos(p)||'').toUpperCase();return ['DST','DEF','D/ST','D-ST'].includes(x)?'D/ST':x};
+  let tradeAddOptions=[];
 
   function ensureTradeData(){
     if(!state.teamRosters||typeof state.teamRosters!=='object')state.teamRosters={};
@@ -289,8 +290,7 @@
             <label class="trade-roster-team-label">Team<select id="trade-roster-team"></select></label>
             <label class="trade-roster-search-label">Current roster search<input id="trade-roster-player-search" type="search" autocomplete="off" placeholder="Search current roster by name..." /></label>
             <div id="trade-roster-list" class="trade-roster-list"></div>
-            <div class="trade-add-search"><input id="trade-add-player-search" type="search" autocomplete="off" placeholder="Search free agents / unassigned players..." /></div>
-            <div class="trade-add-player"><select id="trade-add-player"></select><button class="btn secondary" id="trade-add-player-btn">Add player</button></div>
+            <div class="trade-add-player"><input id="trade-add-player" type="hidden"><div class="trade-player-combo" id="trade-add-player-combo"><input id="trade-add-player-search" type="search" autocomplete="off" placeholder="Add free agent / unassigned player..." aria-label="Search free agents and unassigned players"><button class="trade-combo-clear" id="trade-add-player-clear" type="button" aria-label="Clear selected player">×</button><div class="trade-combo-menu" id="trade-add-player-menu"></div></div><button class="btn secondary" id="trade-add-player-btn">Add player</button></div>
           </article>
         </div>
 
@@ -304,8 +304,8 @@
       const s=document.createElement('style');s.id='trade-center-style';s.textContent=`
         .trade-view{max-width:1500px}.trade-page-head{align-items:flex-start}.trade-season-mode{font-size:10px;font-weight:900;letter-spacing:.06em;border:1px solid #334055;border-radius:999px;padding:7px 10px;color:#98a5ba;white-space:nowrap}
         .trade-rec-surface,.trade-weekly-surface{margin-bottom:16px;background:linear-gradient(145deg,#111620,#0c1119)!important;border-color:#2e394c!important}.trade-helper{margin:5px 0 0;color:#8591a5;font-size:12px;line-height:1.5}.trade-recommendations,.trade-free-agents{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.trade-target,.trade-free-agent{min-width:0;border:1px solid #2d394c;border-radius:14px;background:#0b1119;padding:14px;display:flex;flex-direction:column;gap:9px}.trade-target-top,.trade-free-agent-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.trade-target strong,.trade-free-agent strong{font-size:16px}.trade-target small,.trade-free-agent small{display:block;color:#7f8ca1;margin-top:3px}.trade-target-score,.trade-free-agent-score{font-weight:900;color:#73e59a;background:#10271a;border:1px solid #275b39;border-radius:999px;padding:5px 8px;white-space:nowrap}.trade-target-reason,.trade-free-agent-reason{font-size:11px;color:#9aa6b9;line-height:1.45;min-height:31px}.trade-target-actions{display:flex;gap:7px;align-items:center;margin-top:auto}.trade-target-ai{font-size:11px;line-height:1.5;border-top:1px solid #263144;padding-top:9px;color:#c2cad7}.trade-weekly-ai{margin-top:12px}.trade-weekly-ai .ai-note,.trade-weekly-ai .ai-response{margin-top:0}.trade-free-agent-gain{color:#a8ff45;font-weight:900}
-        .trade-grid-main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:16px}.trade-record-surface,.roster-manager-surface,.trade-history-surface{overflow:hidden}.trade-team-selects{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px}.trade-team-selects label,.trade-roster-team-label,.trade-roster-search-label,.trade-notes-label{display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:900;letter-spacing:.07em;color:#8f9caf;text-transform:uppercase}.trade-team-selects select,.trade-roster-team-label select,.trade-roster-search-label input,.trade-notes-label input,.trade-add-search input,.trade-add-player select{width:100%;box-sizing:border-box}.trade-roster-search-label{margin-top:12px}.trade-add-search{margin:10px 0 8px}.trade-swap{padding-bottom:11px;color:#8e70ef;font-size:20px}.trade-player-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0}.trade-column-title{font-size:11px;font-weight:900;letter-spacing:.06em;color:#b6c0d0;margin-bottom:7px}.trade-player-picker{height:290px;overflow:auto;border:1px solid #2b3649;border-radius:12px;background:#0a0f17;padding:5px}.trade-pick-player{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:9px 8px;border-bottom:1px solid #202a39;cursor:pointer}.trade-pick-player:last-child{border-bottom:0}.trade-pick-player input{margin:0}.trade-pick-player span{min-width:0}.trade-pick-player strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}.trade-pick-player small{display:block;color:#748197;font-size:10px}.trade-pick-value{font-size:10px;font-weight:900;color:#9aa8bb}.trade-notes-label{margin:8px 0 12px}
-        .trade-roster-list{height:372px;overflow:auto;border:1px solid #2b3649;border-radius:12px;background:#0a0f17;margin:12px 0}.trade-roster-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px;border-bottom:1px solid #202a39}.trade-roster-row:last-child{border-bottom:0}.trade-roster-row strong{display:block;font-size:12px}.trade-roster-row small{display:block;font-size:10px;color:#748197}.trade-roster-value{font-size:10px;font-weight:900;color:#a9b4c5}.trade-add-player{display:grid;grid-template-columns:1fr auto;gap:8px}
+        .trade-grid-main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:16px}.trade-record-surface,.roster-manager-surface,.trade-history-surface{overflow:visible}.trade-team-selects{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px}.trade-team-selects label,.trade-roster-team-label,.trade-roster-search-label,.trade-notes-label{display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:900;letter-spacing:.07em;color:#8f9caf;text-transform:uppercase}.trade-team-selects select,.trade-roster-team-label select,.trade-roster-search-label input,.trade-notes-label input,.trade-player-combo input{width:100%;box-sizing:border-box}.trade-roster-search-label{margin-top:12px}.trade-swap{padding-bottom:11px;color:#8e70ef;font-size:20px}.trade-player-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0}.trade-column-title{font-size:11px;font-weight:900;letter-spacing:.06em;color:#b6c0d0;margin-bottom:7px}.trade-player-picker{height:290px;overflow:auto;border:1px solid #2b3649;border-radius:12px;background:#0a0f17;padding:5px}.trade-pick-player{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:9px 8px;border-bottom:1px solid #202a39;cursor:pointer}.trade-pick-player:last-child{border-bottom:0}.trade-pick-player input{margin:0}.trade-pick-player span{min-width:0}.trade-pick-player strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}.trade-pick-player small{display:block;color:#748197;font-size:10px}.trade-pick-value{font-size:10px;font-weight:900;color:#9aa8bb}.trade-notes-label{margin:8px 0 12px}
+        .trade-roster-list{height:372px;overflow:auto;border:1px solid #2b3649;border-radius:12px;background:#0a0f17;margin:12px 0}.trade-roster-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px;border-bottom:1px solid #202a39}.trade-roster-row:last-child{border-bottom:0}.trade-roster-row strong{display:block;font-size:12px}.trade-roster-row small{display:block;font-size:10px;color:#748197}.trade-roster-value{font-size:10px;font-weight:900;color:#a9b4c5}.trade-add-player{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.trade-player-combo{position:relative;min-width:0}.trade-player-combo input{padding-right:42px}.trade-combo-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;background:transparent;color:#8f9caf;font-size:24px;line-height:1;cursor:pointer}.trade-combo-clear:hover{color:#a8ff45}.trade-combo-menu{display:none;position:absolute;z-index:60;left:0;right:0;top:calc(100% + 6px);max-height:280px;overflow:auto;border:1px solid #334057;border-radius:12px;background:#0a0f17;box-shadow:0 22px 60px rgba(0,0,0,.45);padding:5px}.trade-player-combo.open .trade-combo-menu{display:block}.trade-combo-option{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;border:0;border-bottom:1px solid #202a39;background:transparent;color:#eef2f8;text-align:left;padding:10px;border-radius:9px;cursor:pointer}.trade-combo-option:last-child{border-bottom:0}.trade-combo-option:hover,.trade-combo-option.active{background:#121a13}.trade-combo-option strong,.trade-combo-option small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.trade-combo-option strong{font-size:13px}.trade-combo-option small{margin-top:3px;color:#7f8ca1;font-size:10px}.trade-combo-option em{color:#a8ff45;font-size:10px;font-style:normal;font-weight:900}.trade-combo-empty{padding:13px;color:#8f9caf;font-size:12px}
         .trade-history-surface{margin-top:16px}.trade-history-card{border:1px solid #2d394c;border-radius:14px;background:#0b1119;margin-top:10px;overflow:hidden}.trade-history-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:14px 16px;border-bottom:1px solid #263144}.trade-history-head strong{display:block}.trade-history-head small{display:block;color:#79869a;margin-top:3px}.trade-history-actions{display:flex;gap:7px}.trade-flow{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px}.trade-flow>div{border:1px solid #263144;border-radius:10px;padding:10px}.trade-flow span{display:block;font-size:9px;font-weight:900;color:#78869b;letter-spacing:.06em}.trade-flow b{display:block;margin-top:4px;font-size:12px}.trade-ai-analysis{margin:0 16px 15px;padding:12px;border:1px dashed #37445a;border-radius:11px;color:#c4ccd8;font-size:12px;line-height:1.55}.trade-ai-analysis.pending{color:#929eb1}.trade-empty{padding:18px;color:#78869b;text-align:center;font-size:12px}
         @media(max-width:1150px){.trade-recommendations,.trade-free-agents{grid-template-columns:repeat(2,minmax(0,1fr))}.trade-grid-main{grid-template-columns:1fr}}
         @media(max-width:700px){.trade-recommendations,.trade-free-agents{grid-template-columns:1fr}.trade-team-selects{grid-template-columns:1fr}.trade-swap{display:none}.trade-player-columns,.trade-flow{grid-template-columns:1fr}.trade-player-picker{height:220px}.trade-history-head{flex-direction:column}.trade-history-actions{width:100%}.trade-history-actions .btn{flex:1}.trade-add-player{grid-template-columns:1fr}.trade-target-actions{flex-wrap:wrap}}
@@ -328,6 +328,36 @@
     return q.split(/\s+/).every(part=>playerSearchText(p).includes(part));
   }
 
+  function clearTradeAddSelection({keepSearch=false}={}){
+    const hidden=document.getElementById('trade-add-player'),search=document.getElementById('trade-add-player-search');
+    if(hidden)hidden.value='';
+    if(search&&!keepSearch)search.value='';
+  }
+
+  function closeTradeAddCombo(){
+    document.getElementById('trade-add-player-combo')?.classList.remove('open');
+  }
+
+  function selectTradeAddPlayer(id){
+    const p=getPlayer(id),hidden=document.getElementById('trade-add-player'),search=document.getElementById('trade-add-player-search');
+    if(!p||!hidden||!search)return;
+    hidden.value=p.id;
+    search.value=`${p.name} · ${posKey(p)} · ${p.team||''}`;
+    closeTradeAddCombo();
+  }
+
+  function renderTradeAddCombo(){
+    const combo=document.getElementById('trade-add-player-combo'),menu=document.getElementById('trade-add-player-menu'),search=document.getElementById('trade-add-player-search'),hidden=document.getElementById('trade-add-player');
+    if(!combo||!menu||!search||!hidden)return;
+    const q=search.value||'';
+    const selected=getPlayer(hidden.value);
+    const isSelectedLabel=selected&&q===`${selected.name} · ${posKey(selected)} · ${selected.team||''}`;
+    const matches=isSelectedLabel?tradeAddOptions:tradeAddOptions.filter(p=>matchesPlayerSearch(p,q));
+    if(!isSelectedLabel&&String(q).trim()&&matches.length===1)hidden.value=matches[0].id;
+    else if(!isSelectedLabel)hidden.value='';
+    menu.innerHTML=matches.length?matches.slice(0,80).map((p,i)=>`<button class="trade-combo-option ${i===0?'active':''}" type="button" data-trade-add-option="${esc(p.id)}"><span><strong>${esc(p.name)}</strong><small>${esc(posKey(p))} · ${esc(p.team||'')}${p.status?` · ${esc(p.status)}`:''}</small></span><em>${playerTradeValue(p).toFixed(0)}</em></button>`).join(''):'<div class="trade-combo-empty">No free agents match that search.</div>';
+  }
+
   function renderTradePickers(){
     const a=Number(document.getElementById('trade-team-a')?.value||1),b=Number(document.getElementById('trade-team-b')?.value||2);
     const render=(slot,rootId,titleId,direction)=>{
@@ -348,9 +378,10 @@
     const visibleRoster=roster.filter(p=>matchesPlayerSearch(p,rosterSearch));
     if(root)root.innerHTML=visibleRoster.length?visibleRoster.map(p=>`<div class="trade-roster-row"><span><strong>${esc(p.name)}</strong><small>${esc(posKey(p))} · ${esc(p.team||'')} ${p.status?`· ${esc(p.status)}`:''}</small></span><em class="trade-roster-value">${playerTradeValue(p).toFixed(0)}</em><button class="btn secondary small" data-trade-drop="${esc(p.id)}" data-slot="${slot}">Drop</button></div>`).join(''):roster.length?'<div class="trade-empty">No current roster players match that search.</div>':'<div class="trade-empty">No players maintained for this team.</div>';
     const owned=new Set();for(let s=1;s<=leagueSize();s++)seasonRosterIds(s).forEach(id=>owned.add(id));
-    const addSearch=document.getElementById('trade-add-player-search')?.value||'';
-    const available=(state.players||[]).filter(p=>!owned.has(p.id)&&matchesPlayerSearch(p,addSearch)).sort((a,b)=>num(a.rank,9999)-num(b.rank,9999)).slice(0,650);
-    const add=document.getElementById('trade-add-player');if(add)add.innerHTML='<option value="">Add free agent / unassigned player…</option>'+available.map(p=>`<option value="${esc(p.id)}">${esc(p.name)} · ${esc(posKey(p))} · ${esc(p.team||'')}</option>`).join('');
+    tradeAddOptions=(state.players||[]).filter(p=>!owned.has(p.id)).sort((a,b)=>num(a.rank,9999)-num(b.rank,9999)).slice(0,650);
+    const hidden=document.getElementById('trade-add-player');
+    if(hidden?.value&&!tradeAddOptions.some(p=>p.id===hidden.value))clearTradeAddSelection();
+    renderTradeAddCombo();
   }
 
   function recommendationMarkup(rec){
@@ -501,7 +532,7 @@
     if(!ensureSeasonModeForTransactions())return;
     const slot=Number(document.getElementById('trade-roster-team')?.value||0),id=document.getElementById('trade-add-player')?.value;
     if(!slot||!id)return toast('Choose a player to add','error');const p=getPlayer(id);if(!p)return;
-    const addSearch=document.getElementById('trade-add-player-search');if(addSearch)addSearch.value='';
+    clearTradeAddSelection();
     setPlayerOwner(id,slot);postRosterMutation(`${p.name} added to ${leagueTeamName(slot)}`);
   }
 
@@ -509,9 +540,15 @@
     document.querySelector('.nav-item[data-tab="trades"]')?.addEventListener('click',()=>{switchTab('trades');renderTradeCenter()});
     document.getElementById('trade-team-a')?.addEventListener('change',()=>{const a=Number(document.getElementById('trade-team-a').value),b=document.getElementById('trade-team-b');if(b&&Number(b.value)===a){const alt=state.leagueTeams.find(t=>t.slot!==a);if(alt)b.value=String(alt.slot)}renderTradePickers()});
     document.getElementById('trade-team-b')?.addEventListener('change',()=>{const b=Number(document.getElementById('trade-team-b').value),a=document.getElementById('trade-team-a');if(a&&Number(a.value)===b){const alt=state.leagueTeams.find(t=>t.slot!==b);if(alt)a.value=String(alt.slot)}renderTradePickers()});
-    document.getElementById('trade-roster-team')?.addEventListener('change',()=>{const rosterSearch=document.getElementById('trade-roster-player-search');if(rosterSearch)rosterSearch.value='';renderRosterManager()});
+    document.getElementById('trade-roster-team')?.addEventListener('change',()=>{const rosterSearch=document.getElementById('trade-roster-player-search');if(rosterSearch)rosterSearch.value='';clearTradeAddSelection();renderRosterManager()});
     document.getElementById('trade-roster-player-search')?.addEventListener('input',renderRosterManager);
-    document.getElementById('trade-add-player-search')?.addEventListener('input',renderRosterManager);
+    const addSearch=document.getElementById('trade-add-player-search');
+    addSearch?.addEventListener('focus',()=>{document.getElementById('trade-add-player-combo')?.classList.add('open');renderTradeAddCombo()});
+    addSearch?.addEventListener('input',()=>{clearTradeAddSelection({keepSearch:true});document.getElementById('trade-add-player-combo')?.classList.add('open');renderTradeAddCombo()});
+    addSearch?.addEventListener('keydown',e=>{if(e.key==='Enter'){const first=document.querySelector('#trade-add-player-menu [data-trade-add-option]');if(first){e.preventDefault();selectTradeAddPlayer(first.dataset.tradeAddOption)}}else if(e.key==='Escape')closeTradeAddCombo()});
+    document.getElementById('trade-add-player-clear')?.addEventListener('click',()=>{clearTradeAddSelection();document.getElementById('trade-add-player-search')?.focus();document.getElementById('trade-add-player-combo')?.classList.add('open');renderTradeAddCombo()});
+    document.getElementById('trade-add-player-menu')?.addEventListener('click',e=>{const opt=e.target.closest('[data-trade-add-option]');if(opt)selectTradeAddPlayer(opt.dataset.tradeAddOption)});
+    document.addEventListener('click',e=>{if(!e.target.closest('#trade-add-player-combo'))closeTradeAddCombo()});
     document.getElementById('record-trade')?.addEventListener('click',recordTrade);
     document.getElementById('trade-add-player-btn')?.addEventListener('click',addPlayerToManagedRoster);
     document.getElementById('refresh-trade-recs')?.addEventListener('click',()=>{refreshTradeRecommendations({persist:true});renderRecommendations();toast('Trade targets refreshed')});
