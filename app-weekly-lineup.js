@@ -298,7 +298,7 @@
 
   async function requestLineupAi(week,result){
     const box=ensureAiBox();if(!box)return;
-    box.innerHTML='<div class="ai-note">AI is reviewing Week '+week+' opponents, home/away, status and all available matchup factors…</div>';
+    box.innerHTML=window.aiLoadingMarkup?window.aiLoadingMarkup(`Reviewing Week ${week} lineup`,'Checking starters, bench pivots, opponent context and matchup factors.'):'<div class="ai-note">AI is reviewing Week '+week+' opponents, home/away, status and all available matchup factors...</div>';
     try{
       const context=lineupAiContext(week,result);
       const response=await fetch('/api/ai-advice',{method:'POST',headers:typeof authorizedJsonHeaders==='function'?await authorizedJsonHeaders():{'Content-Type':'application/json'},body:JSON.stringify({task:'lineup',context})});
@@ -320,7 +320,7 @@
     lineupBusy=true;
     if(btn){btn.disabled=true;btn.dataset.originalText=btn.dataset.originalText||btn.textContent;btn.textContent=runAi?`Optimizing Week ${week}…`:`Loading Week ${week}…`}
     if(refresh){refresh.disabled=true;refresh.dataset.originalText=refresh.dataset.originalText||refresh.textContent;refresh.textContent=force?'Refreshing…':'Loading…'}
-    const box=ensureAiBox();if(box&&!silent)box.innerHTML=`<div class="ai-note">Loading the Week ${week} NFL schedule and matchup context…</div>`;
+    const box=ensureAiBox();if(box&&!silent)box.innerHTML=window.aiLoadingMarkup?window.aiLoadingMarkup(`Loading Week ${week} context`,'Fetching schedule, projections and matchup inputs for the optimizer.'):`<div class="ai-note">Loading the Week ${week} NFL schedule and matchup context...</div>`;
     try{
       if(typeof loadNflWeek==='function')await loadNflWeek(week,force);
       roster=myRoster();
