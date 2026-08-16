@@ -22,6 +22,7 @@ Current features:
 - Undo last draft pick, full draft board, JSON backup/restore
 - Authenticated Firestore league/draft storage with an immediate local browser mirror for save resilience
 - Firebase Functions for AI advice, screenshot import and cached NFL week data
+- Account profile screen with free daily AI allowance, paid token balance and Stripe Checkout token packs
 - Scheduled Functions to warm NFL week caches and clean old quota/cache documents
 
 Deploy the production site with Firebase Hosting. GitHub Pages can still serve static assets, but same-origin `/api/*` Function rewrites and authenticated cloud features require Firebase Hosting.
@@ -35,16 +36,21 @@ Required Firebase pieces:
 - Firestore for user league state, usage counters and public NFL week cache documents
 - Firebase Auth email/password sign-in
 
-Required secret:
+Required secrets:
 
 ```bash
 firebase functions:secrets:set OPENAI_API_KEY
+firebase functions:secrets:set STRIPE_SECRET_KEY
+firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
 ```
+
+Stripe Checkout powers one-time AI token-pack purchases. Configure the Stripe webhook endpoint to the hosted route `/api/stripe-webhook` and subscribe it to `checkout.session.completed`; the webhook verifies Stripe's signature before crediting tokens in Firestore.
 
 Useful runtime environment variables:
 
 - `OPENAI_MODEL`, default `gpt-5.6`
 - `AI_DAILY_LIMIT`, default `60`
+- `FREE_DAILY_AI_TOKENS`, default inherits `AI_DAILY_LIMIT` or `60`
 - `SCREENSHOT_IMPORT_DAILY_LIMIT`, default `20`
 - `NFL_SEASON`, optional scheduled-cache season override
 - `NFL_CURRENT_WEEK`, optional scheduled-cache week override

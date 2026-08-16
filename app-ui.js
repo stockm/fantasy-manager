@@ -37,6 +37,7 @@ const SCRIPT_ASSETS = [
   'app-player-card-enhance.js',
   'app-test-autodraft.js',
   'app-firebase-data.js',
+  'app-account.js',
   'app-performance.js',
   'app-season-dashboard.js',
   'app-theme.js',

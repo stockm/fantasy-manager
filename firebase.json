@@ -44,7 +44,10 @@
     "rewrites": [
       { "source": "/api/ai-advice", "function": { "functionId": "aiAdvice", "region": "us-central1" } },
       { "source": "/api/nfl-week", "function": { "functionId": "nflWeek", "region": "us-central1" } },
-      { "source": "/api/screenshot-import", "function": { "functionId": "screenshotImport", "region": "us-central1" } }
+      { "source": "/api/screenshot-import", "function": { "functionId": "screenshotImport", "region": "us-central1" } },
+      { "source": "/api/account-profile", "function": { "functionId": "accountProfile", "region": "us-central1" } },
+      { "source": "/api/billing-checkout", "function": { "functionId": "billingCheckout", "region": "us-central1" } },
+      { "source": "/api/stripe-webhook", "function": { "functionId": "stripeWebhook", "region": "us-central1" } }
     ]
   }
 }
