@@ -14,22 +14,43 @@
   function norm(v=''){return String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,'and').replace(/[^a-z0-9]/g,'')}
   function tokenNorm(v=''){return String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean)}
   function overlapScore(a,b){const A=tokenNorm(a),B=tokenNorm(b);if(!A.length||!B.length)return 0;const set=new Set(A);const hit=B.filter(x=>set.has(x)).length;return(2*hit)/(A.length+B.length)}
+  function isDefensePlayer(p){return positionsOf(p).some(x=>['D/ST','DST','DEF'].includes(String(x).toUpperCase()))||String(p?.entityType||'').toUpperCase()==='TEAM_DEFENSE'||String(p?.status||'').toUpperCase()==='TEAM DEFENSE'}
+  function defenseTeamParts(team){
+    const code=canonicalTeam(team),full=NFL_TEAM_ALIASES[code]||NFL_TEAM_ALIASES[String(team||'').toUpperCase()]||'',parts=full.split(/\s+/).filter(Boolean),nickname=parts.at(-1)||'';
+    return[code,full,nickname].filter(Boolean)
+  }
+  function defenseAliasesFor(p){
+    const base=[p?.name||'',...defenseTeamParts(p?.team)];
+    const out=[];
+    base.forEach(name=>{
+      out.push(name,`${name} Defense`,`${name} DEF`,`${name} DST`,`${name} D/ST`,`${name} Defense Special Teams`,`${name} Defense and Special Teams`,`${name} Special Teams`);
+    });
+    return[...new Set(out.map(compactText).filter(x=>x.split(' ').length>=1))]
+  }
+  function compactIndex(text,alias){if(!text||!alias)return-1;return` ${text} `.indexOf(` ${alias} `)}
   function matchTeam(name){
     if(!name)return null;if(typeof ensureLeagueData==='function')ensureLeagueData();
     const exact=(state.leagueTeams||[]).find(t=>norm(t.name)===norm(name));if(exact)return{team:exact,score:1};
     const ranked=(state.leagueTeams||[]).map(t=>({team:t,score:overlapScore(name,t.name)})).sort((a,b)=>b.score-a.score);return ranked[0]?.score>=.55?ranked[0]:null
   }
   function matchPlayer(raw){
-    const name=raw?.name||'';if(!name)return null;const exact=(state.players||[]).filter(p=>canonicalName(p.name)===canonicalName(name));
+    const name=raw?.name||'';if(!name)return null;const rawPos=normalizePos(raw.position||raw.pos||''),rawTeam=canonicalTeam(raw.nflTeam||raw.team||''),rawLooksDefense=rawPos==='D/ST'||/\b(def|dst|d\/st|defense|special teams)\b/i.test(`${name} ${raw.position||''} ${raw.pos||''}`);
+    if(rawLooksDefense){
+      const rawKey=compactText(`${name} ${raw.position||raw.pos||''}`);
+      const defenseMatch=(state.players||[]).filter(isDefensePlayer).map(p=>({player:p,score:Math.max(...defenseAliasesFor(p).map(alias=>compactIndex(rawKey,alias)>=0||compactIndex(alias,rawKey)>=0?1:overlapScore(rawKey,alias)))})).sort((a,b)=>b.score-a.score||num(a.player.rank,9999)-num(b.player.rank,9999))[0];
+      if(defenseMatch?.score>=.5)return defenseMatch
+    }
+    const exact=(state.players||[]).filter(p=>canonicalName(p.name)===canonicalName(name));
     if(exact.length===1)return{player:exact[0],score:1};
-    if(exact.length>1){const team=canonicalTeam(raw.nflTeam||raw.team||''),pos=normalizePos(raw.position||raw.pos||'');const hit=exact.find(p=>(!team||canonicalTeam(p.team)===team)&&(!pos||positionsOf(p).includes(pos)));if(hit)return{player:hit,score:.98}}
+    if(exact.length>1){const hit=exact.find(p=>(!rawTeam||canonicalTeam(p.team)===rawTeam)&&(!rawPos||positionsOf(p).includes(rawPos)));if(hit)return{player:hit,score:.98}}
     const ranked=(state.players||[]).map(p=>({player:p,score:overlapScore(name,p.name)})).filter(x=>x.score>=.72).sort((a,b)=>b.score-a.score);return ranked[0]||null
   }
   function compactText(v=''){return tokenNorm(v).join(' ')}
   function playerTextAliases(p){
     const aliases=[p?.name||''],pos=primaryPos(p),team=String(p?.team||'').toUpperCase(),full=NFL_TEAM_ALIASES[team]||'';
-    if(pos==='D/ST'){
+    if(isDefensePlayer(p)){
       aliases.push(String(p?.name||'').replace(/\s+Defense$/i,' D/ST'));
+      aliases.push(...defenseAliasesFor(p));
       if(team){aliases.push(`${team} D/ST`,`${team} Defense`)}
       if(full)aliases.push(full,`${full} Defense`,`${full} D/ST`);
     }
@@ -41,10 +62,11 @@
     for(const p of state.players||[]){
       let best=null;
       for(const alias of playerTextAliases(p)){
-        const index=text.indexOf(alias);
+        const index=compactIndex(text,alias);
         if(index>=0&&(!best||index<best.index))best={alias,index};
       }
-      if(best&&!seen.has(p.id)){seen.add(p.id);matches.push({player:p,alias:best.alias,index:best.index})}
+      const defenseKey=isDefensePlayer(p)?`dst:${canonicalTeam(p.team)||p.id}`:p.id;
+      if(best&&!seen.has(defenseKey)){seen.add(defenseKey);seen.add(p.id);matches.push({player:p,alias:best.alias,index:best.index})}
     }
     return matches.sort((a,b)=>a.index-b.index||num(a.player.rank,9999)-num(b.player.rank,9999))
   }
