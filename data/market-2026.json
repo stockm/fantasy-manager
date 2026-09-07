@@ -1,8 +1,8 @@
 {
   "schemaVersion": 3,
   "season": 2026,
-  "generatedAt": "2026-09-06T16:14:28.310539+00:00",
-  "projectionDate": "Sep 6, 2026",
+  "generatedAt": "2026-09-07T18:14:37.442934+00:00",
+  "projectionDate": "Sep 7, 2026",
   "projectionAnchorCount": 60,
   "projectionEstimateCount": 149,
   "sources": {
@@ -1286,8 +1286,8 @@
       "adpLow": 141.0,
       "adpStdev": 12.8,
       "timesDrafted": 89,
-      "projection": 151.7,
-      "sourceProjection": 151.8,
+      "projection": 156.4,
+      "sourceProjection": 156.2,
       "projectionQuality": "consensus-custom-yahoo"
     },
     {
@@ -1398,7 +1398,7 @@
       "adpLow": 141.0,
       "adpStdev": 16.1,
       "timesDrafted": 88,
-      "projection": 148.9,
+      "projection": 149.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1622,8 +1622,8 @@
       "adpLow": 155.0,
       "adpStdev": 20.4,
       "timesDrafted": 182,
-      "projection": 155.3,
-      "sourceProjection": 155.2,
+      "projection": 156.0,
+      "sourceProjection": 156.0,
       "projectionQuality": "consensus-custom-yahoo"
     },
     {
@@ -1944,7 +1944,7 @@
       "adpLow": 175.0,
       "adpStdev": 20.0,
       "timesDrafted": 295,
-      "projection": 140.8,
+      "projection": 141.5,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -1958,7 +1958,7 @@
       "adpLow": 169.0,
       "adpStdev": 16.6,
       "timesDrafted": 67,
-      "projection": 139.2,
+      "projection": 140.0,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2126,7 +2126,7 @@
       "adpLow": 177.0,
       "adpStdev": 19.0,
       "timesDrafted": 82,
-      "projection": 137.8,
+      "projection": 138.6,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2168,7 +2168,7 @@
       "adpLow": 176.0,
       "adpStdev": 20.6,
       "timesDrafted": 63,
-      "projection": 136.5,
+      "projection": 137.3,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2280,7 +2280,7 @@
       "adpLow": 197.0,
       "adpStdev": 29.1,
       "timesDrafted": 6,
-      "projection": 135.3,
+      "projection": 136.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2294,7 +2294,7 @@
       "adpLow": 193.0,
       "adpStdev": 17.5,
       "timesDrafted": 49,
-      "projection": 134.1,
+      "projection": 135.0,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2308,7 +2308,7 @@
       "adpLow": 196.0,
       "adpStdev": 23.8,
       "timesDrafted": 20,
-      "projection": 133.1,
+      "projection": 133.9,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2490,7 +2490,7 @@
       "adpLow": 202.0,
       "adpStdev": 33.2,
       "timesDrafted": 13,
-      "projection": 132.1,
+      "projection": 132.9,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2518,7 +2518,7 @@
       "adpLow": 180.0,
       "adpStdev": 17.0,
       "timesDrafted": 27,
-      "projection": 131.2,
+      "projection": 132.0,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2798,7 +2798,7 @@
       "adpLow": 210.0,
       "adpStdev": 26.2,
       "timesDrafted": 12,
-      "projection": 130.3,
+      "projection": 131.1,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
@@ -2868,7 +2868,7 @@
       "adpLow": 203.0,
       "adpStdev": 20.3,
       "timesDrafted": 9,
-      "projection": 129.4,
+      "projection": 130.3,
       "sourceProjection": null,
       "projectionQuality": "adp-calibrated-estimate"
     },
